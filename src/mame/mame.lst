@@ -19808,6 +19808,9 @@ ibm3153                         //
 ibm5100
 ibm5110
 
+@source:ibm/ibm5322.cpp
+ibm5322                         //
+
 @source:ibm/ibm5550.cpp
 ibm5550                         //
 
