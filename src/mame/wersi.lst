@@ -1,0 +1,15 @@
+// license:BSD-3-Clause
+// copyright-holders:MAMEdev Team
+/******************************************************************************
+
+    wersi.lst
+
+    List of all enabled drivers for the Wersi EX-20 build target.
+
+******************************************************************************/
+
+@source:wersi/ex20.cpp
+ex20                            // 1986
+
+@source:wersi/slm2test.cpp
+slm2test                        // 2026 (test driver)

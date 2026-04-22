@@ -1,0 +1,408 @@
+<?xml version="1.0"?>
+<!--
+license:CC0-1.0
+Wersi MK1 "Stage Performer" / EX-20 layout
+VFD display + panel buttons with LED indicators
+-->
+<mamelayout version="2">
+	<element name="vfd_char"><led16segsc><color red="0" green="0.6" blue="1.0" /></led16segsc></element>
+	<element name="bg"><rect><color red="0.12" green="0.12" blue="0.12" /></rect></element>
+	<element name="vfd_bg"><rect><color red="0.02" green="0.02" blue="0.02" /></rect></element>
+	<element name="btn"><rect><color red="0.35" green="0.35" blue="0.35" /></rect></element>
+	<element name="btn_red"><rect><color red="0.55" green="0.15" blue="0.15" /></rect></element>
+
+	<element name="led" defstate="0">
+		<rect state="0"><color red="0.15" green="0.02" blue="0.02" /></rect>
+		<rect state="1"><color red="1.0" green="0.1" blue="0.1" /></rect>
+	</element>
+	<element name="hl" defstate="0">
+		<text string=" "><color red="0" green="0" blue="0" /></text>
+		<rect state="1"><color red="1" green="1" blue="1" /></rect>
+	</element>
+
+	<!-- Button labels -->
+	<element name="t_A"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="A"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_B"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="B"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_C"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="C"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_D"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="D"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_E"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="E"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_F"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="F"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_G"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="G"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_H"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="H"><color red="1" green="1" blue="1" /></text></element>
+
+	<element name="label_rows"><text string="Matrix Rows"><color red="0.5" green="0.5" blue="0.5" /></text></element>
+	<element name="label_cols"><text string="Matrix Cols"><color red="0.5" green="0.5" blue="0.5" /></text></element>
+
+	<!-- ==================== PA0 first: CB31-IC4 (T1-T8: Matrix rows A-H) ==================== -->
+	<!-- A-D column (left side of matrix) -->
+	<group name="pa0_rows_ad">
+		<element name="K0_00" ref="led"><bounds x="3" y="0"  width="4" height="2" /></element>
+		<element ref="t_A"><bounds x="0" y="3"  width="14" height="18" /></element>
+		<element ref="hl" inputtag="K0" inputmask="0x01"><bounds x="0" y="3"  width="14" height="18" /><color alpha="0.15" /></element>
+
+		<element name="K0_01" ref="led"><bounds x="3" y="24" width="4" height="2" /></element>
+		<element ref="t_B"><bounds x="0" y="27" width="14" height="18" /></element>
+		<element ref="hl" inputtag="K0" inputmask="0x02"><bounds x="0" y="27" width="14" height="18" /><color alpha="0.15" /></element>
+
+		<element name="K0_02" ref="led"><bounds x="3" y="48" width="4" height="2" /></element>
+		<element ref="t_C"><bounds x="0" y="51" width="14" height="18" /></element>
+		<element ref="hl" inputtag="K0" inputmask="0x04"><bounds x="0" y="51" width="14" height="18" /><color alpha="0.15" /></element>
+
+		<element name="K0_03" ref="led"><bounds x="3" y="72" width="4" height="2" /></element>
+		<element ref="t_D"><bounds x="0" y="75" width="14" height="18" /></element>
+		<element ref="hl" inputtag="K0" inputmask="0x08"><bounds x="0" y="75" width="14" height="18" /><color alpha="0.15" /></element>
+	</group>
+
+	<!-- E-H column (right side of matrix) -->
+	<group name="pa0_rows_eh">
+		<element name="K0_04" ref="led"><bounds x="3" y="0"  width="4" height="2" /></element>
+		<element ref="t_E"><bounds x="0" y="3"  width="14" height="18" /></element>
+		<element ref="hl" inputtag="K0" inputmask="0x10"><bounds x="0" y="3"  width="14" height="18" /><color alpha="0.15" /></element>
+
+		<element name="K0_05" ref="led"><bounds x="3" y="24" width="4" height="2" /></element>
+		<element ref="t_F"><bounds x="0" y="27" width="14" height="18" /></element>
+		<element ref="hl" inputtag="K0" inputmask="0x20"><bounds x="0" y="27" width="14" height="18" /><color alpha="0.15" /></element>
+
+		<element name="K0_06" ref="led"><bounds x="3" y="48" width="4" height="2" /></element>
+		<element ref="t_G"><bounds x="0" y="51" width="14" height="18" /></element>
+		<element ref="hl" inputtag="K0" inputmask="0x40"><bounds x="0" y="51" width="14" height="18" /><color alpha="0.15" /></element>
+
+		<element name="K0_07" ref="led"><bounds x="3" y="72" width="4" height="2" /></element>
+		<element ref="t_H"><bounds x="0" y="75" width="14" height="18" /></element>
+		<element ref="hl" inputtag="K0" inputmask="0x80"><bounds x="0" y="75" width="14" height="18" /><color alpha="0.15" /></element>
+	</group>
+
+	<!-- ==================== PA0 chained: CB31-IC5 (T9-T16: Matrix 1-8) ==================== -->
+	<!-- Labels reuse t_1..t_8 defined above -->
+	<element name="t_1"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="1"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_2"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="2"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_3"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="3"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_4"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="4"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_5"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="5"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_6"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="6"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_7"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="7"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_8"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="8"><color red="1" green="1" blue="1" /></text></element>
+
+	<group name="pa0_matrix_cols">
+		<element name="K1_00" ref="led"><bounds x="0" y="0" width="4" height="2" /></element>
+		<element ref="t_1"><bounds x="0" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K1" inputmask="0x01"><bounds x="0" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K1_01" ref="led"><bounds x="22" y="0" width="4" height="2" /></element>
+		<element ref="t_2"><bounds x="22" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K1" inputmask="0x02"><bounds x="22" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K1_02" ref="led"><bounds x="44" y="0" width="4" height="2" /></element>
+		<element ref="t_3"><bounds x="44" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K1" inputmask="0x04"><bounds x="44" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K1_03" ref="led"><bounds x="66" y="0" width="4" height="2" /></element>
+		<element ref="t_4"><bounds x="66" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K1" inputmask="0x08"><bounds x="66" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K1_04" ref="led"><bounds x="88" y="0" width="4" height="2" /></element>
+		<element ref="t_5"><bounds x="88" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K1" inputmask="0x10"><bounds x="88" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K1_05" ref="led"><bounds x="110" y="0" width="4" height="2" /></element>
+		<element ref="t_6"><bounds x="110" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K1" inputmask="0x20"><bounds x="110" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K1_06" ref="led"><bounds x="132" y="0" width="4" height="2" /></element>
+		<element ref="t_7"><bounds x="132" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K1" inputmask="0x40"><bounds x="132" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K1_07" ref="led"><bounds x="154" y="0" width="4" height="2" /></element>
+		<element ref="t_8"><bounds x="154" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K1" inputmask="0x80"><bounds x="154" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+	</group>
+
+	<!-- ==================== PA3 chained: CB30-IC3 (Presets-RAM 1-8) ==================== -->
+	<element name="label_presets"><text string="PRESETS-RAM"><color red="0.5" green="0.5" blue="0.5" /></text></element>
+	<group name="pa3_presets">
+		<!-- Row 1: Presets 1-4 -->
+		<element name="K7_00" ref="led"><bounds x="3"  y="0" width="4" height="2" /></element>
+		<element ref="t_1"><bounds x="0"  y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K7" inputmask="0x01"><bounds x="0"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K7_01" ref="led"><bounds x="23" y="0" width="4" height="2" /></element>
+		<element ref="t_2"><bounds x="20" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K7" inputmask="0x02"><bounds x="20" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K7_02" ref="led"><bounds x="43" y="0" width="4" height="2" /></element>
+		<element ref="t_3"><bounds x="40" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K7" inputmask="0x04"><bounds x="40" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K7_03" ref="led"><bounds x="63" y="0" width="4" height="2" /></element>
+		<element ref="t_4"><bounds x="60" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K7" inputmask="0x08"><bounds x="60" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<!-- Row 2: Presets 5-8 -->
+		<element name="K7_04" ref="led"><bounds x="3"  y="18" width="4" height="2" /></element>
+		<element ref="t_5"><bounds x="0"  y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K7" inputmask="0x10"><bounds x="0"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K7_05" ref="led"><bounds x="23" y="18" width="4" height="2" /></element>
+		<element ref="t_6"><bounds x="20" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K7" inputmask="0x20"><bounds x="20" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K7_06" ref="led"><bounds x="43" y="18" width="4" height="2" /></element>
+		<element ref="t_7"><bounds x="40" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K7" inputmask="0x40"><bounds x="40" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K7_07" ref="led"><bounds x="63" y="18" width="4" height="2" /></element>
+		<element ref="t_8"><bounds x="60" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K7" inputmask="0x80"><bounds x="60" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+	</group>
+
+	<!-- ==================== PA3 first + PA1 first: Voice/Source Control ==================== -->
+	<element name="label_voicectl"><text string="VOICE CONTROL"><color red="0.5" green="0.5" blue="0.5" /></text></element>
+	<element name="label_srcctl"><text string="SOURCE CONTROL"><color red="0.5" green="0.5" blue="0.5" /></text></element>
+	<element name="t_2nd"><rect><color red="0.2" green="0.2" blue="0.5" /></rect><text string="2"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_1st"><rect><color red="0.55" green="0.15" blue="0.15" /></rect><text string="1"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_2v"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="2"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_3v"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="3"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_4v"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="4"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_bkpr"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="BkPr"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_ctpr"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="CtPr"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_bkvc"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="BkVc"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_ctvc"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="CtVc"><color red="1" green="1" blue="1" /></text></element>
+	<element name="t_whlim"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="WHL"><color red="1" green="1" blue="1" /></text></element>
+
+	<group name="pa3_voice_ctl">
+		<!-- Voice Control row: 2nd, 1st, 2.Voice, 3.Voice, 4.Voice -->
+		<element name="K6_00" ref="led"><bounds x="3"  y="0" width="4" height="2" /></element>
+		<element ref="t_2nd"><bounds x="0"  y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K6" inputmask="0x01"><bounds x="0"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K6_01" ref="led"><bounds x="23" y="0" width="4" height="2" /></element>
+		<element ref="t_1st"><bounds x="20" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K6" inputmask="0x02"><bounds x="20" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K6_02" ref="led"><bounds x="43" y="0" width="4" height="2" /></element>
+		<element ref="t_2v"><bounds x="40" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K6" inputmask="0x04"><bounds x="40" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K6_03" ref="led"><bounds x="63" y="0" width="4" height="2" /></element>
+		<element ref="t_3v"><bounds x="60" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K6" inputmask="0x08"><bounds x="60" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K6_04" ref="led"><bounds x="83" y="0" width="4" height="2" /></element>
+		<element ref="t_4v"><bounds x="80" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K6" inputmask="0x10"><bounds x="80" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<!-- Source Control row: BkPr, CtPr, BkVc, CtVc(K2), WHL/LIM(K2) -->
+		<element name="K6_05" ref="led"><bounds x="3"  y="18" width="4" height="2" /></element>
+		<element ref="t_bkpr"><bounds x="0"  y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K6" inputmask="0x20"><bounds x="0"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K6_06" ref="led"><bounds x="23" y="18" width="4" height="2" /></element>
+		<element ref="t_ctpr"><bounds x="20" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K6" inputmask="0x40"><bounds x="20" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K6_07" ref="led"><bounds x="43" y="18" width="4" height="2" /></element>
+		<element ref="t_bkvc"><bounds x="40" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K6" inputmask="0x80"><bounds x="40" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<!-- These two are on K2 (PA1 first IC2), bits 0-1 -->
+		<element name="K2_00" ref="led"><bounds x="63" y="18" width="4" height="2" /></element>
+		<element ref="t_ctvc"><bounds x="60" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K2" inputmask="0x01"><bounds x="60" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K2_01" ref="led"><bounds x="83" y="18" width="4" height="2" /></element>
+		<element ref="t_whlim"><bounds x="80" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K2" inputmask="0x02"><bounds x="80" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+	</group>
+
+	<!-- ==================== PA1+PA2: DMS Instruments 1-20 ==================== -->
+	<element name="label_dms"><text string="DMS-INSTRUMENTS-ROM"><color red="0.5" green="0.5" blue="0.5" /></text></element>
+	<!-- DMS 1-6 = K2 bits 2-7, DMS 7-14 = K3 bits 0-7, DMS 15-20 = K4 bits 0-5 -->
+	<group name="pa1_dms">
+		<!-- Row 1: DMS 1-10 -->
+		<!-- DMS 1-6 from K2 bits 2-7 -->
+		<element name="K2_02" ref="led"><bounds x="3"   y="0" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="0"   y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K2" inputmask="0x04"><bounds x="0"   y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K2_03" ref="led"><bounds x="23"  y="0" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="20"  y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K2" inputmask="0x08"><bounds x="20"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K2_04" ref="led"><bounds x="43"  y="0" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="40"  y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K2" inputmask="0x10"><bounds x="40"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K2_05" ref="led"><bounds x="63"  y="0" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="60"  y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K2" inputmask="0x20"><bounds x="60"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K2_06" ref="led"><bounds x="83"  y="0" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="80"  y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K2" inputmask="0x40"><bounds x="80"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K2_07" ref="led"><bounds x="103" y="0" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="100" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K2" inputmask="0x80"><bounds x="100" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<!-- DMS 7-10 from K3 bits 0-3 -->
+		<element name="K3_00" ref="led"><bounds x="123" y="0" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="120" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K3" inputmask="0x01"><bounds x="120" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K3_01" ref="led"><bounds x="143" y="0" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="140" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K3" inputmask="0x02"><bounds x="140" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K3_02" ref="led"><bounds x="163" y="0" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="160" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K3" inputmask="0x04"><bounds x="160" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K3_03" ref="led"><bounds x="183" y="0" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="180" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K3" inputmask="0x08"><bounds x="180" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<!-- Row 2: DMS 11-20 -->
+		<!-- DMS 11-14 from K3 bits 4-7 -->
+		<element name="K3_04" ref="led"><bounds x="3"   y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="0"   y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K3" inputmask="0x10"><bounds x="0"   y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K3_05" ref="led"><bounds x="23"  y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="20"  y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K3" inputmask="0x20"><bounds x="20"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K3_06" ref="led"><bounds x="43"  y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="40"  y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K3" inputmask="0x40"><bounds x="40"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K3_07" ref="led"><bounds x="63"  y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="60"  y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K3" inputmask="0x80"><bounds x="60"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<!-- DMS 15-20 from K4 bits 0-5 -->
+		<element name="K4_00" ref="led"><bounds x="83"  y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="80"  y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K4" inputmask="0x01"><bounds x="80"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K4_01" ref="led"><bounds x="103" y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="100" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K4" inputmask="0x02"><bounds x="100" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K4_02" ref="led"><bounds x="123" y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="120" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K4" inputmask="0x04"><bounds x="120" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K4_03" ref="led"><bounds x="143" y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="140" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K4" inputmask="0x08"><bounds x="140" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K4_04" ref="led"><bounds x="163" y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="160" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K4" inputmask="0x10"><bounds x="160" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K4_05" ref="led"><bounds x="183" y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="180" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K4" inputmask="0x20"><bounds x="180" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+	</group>
+
+	<!-- ==================== PA2: CV Instruments 1-10 ==================== -->
+	<element name="label_cv"><text string="CV-INST-RAM"><color red="0.5" green="0.5" blue="0.5" /></text></element>
+	<!-- CV 1-2 = K4 bits 6-7, CV 3-10 = K5 bits 0-7 -->
+	<group name="pa2_cv">
+		<!-- Row 1: CV 1-5 -->
+		<element name="K4_06" ref="led"><bounds x="3"  y="0" width="4" height="2" /></element>
+		<element ref="t_1"><bounds x="0"  y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K4" inputmask="0x40"><bounds x="0"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K4_07" ref="led"><bounds x="23" y="0" width="4" height="2" /></element>
+		<element ref="t_2"><bounds x="20" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K4" inputmask="0x80"><bounds x="20" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K5_00" ref="led"><bounds x="43" y="0" width="4" height="2" /></element>
+		<element ref="t_3"><bounds x="40" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K5" inputmask="0x01"><bounds x="40" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K5_01" ref="led"><bounds x="63" y="0" width="4" height="2" /></element>
+		<element ref="t_4"><bounds x="60" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K5" inputmask="0x02"><bounds x="60" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K5_02" ref="led"><bounds x="83" y="0" width="4" height="2" /></element>
+		<element ref="t_5"><bounds x="80" y="3" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K5" inputmask="0x04"><bounds x="80" y="3" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<!-- Row 2: CV 6-10 -->
+		<element name="K5_03" ref="led"><bounds x="3"  y="18" width="4" height="2" /></element>
+		<element ref="t_6"><bounds x="0"  y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K5" inputmask="0x08"><bounds x="0"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K5_04" ref="led"><bounds x="23" y="18" width="4" height="2" /></element>
+		<element ref="t_7"><bounds x="20" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K5" inputmask="0x10"><bounds x="20" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K5_05" ref="led"><bounds x="43" y="18" width="4" height="2" /></element>
+		<element ref="t_8"><bounds x="40" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K5" inputmask="0x20"><bounds x="40" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K5_06" ref="led"><bounds x="63" y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="60" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K5" inputmask="0x40"><bounds x="60" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+
+		<element name="K5_07" ref="led"><bounds x="83" y="18" width="4" height="2" /></element>
+		<element ref="btn"><bounds x="80" y="21" width="18" height="12" /></element>
+		<element ref="hl" inputtag="K5" inputmask="0x80"><bounds x="80" y="21" width="18" height="12" /><color alpha="0.15" /></element>
+	</group>
+	<group name="pa0_matrix">
+		<!-- Function Control Matrix -->
+		<!-- Cols 1-8 across the top -->
+		<group ref="pa0_matrix_cols"><bounds x="20" y="0" width="174" height="16" /></group>
+		<!-- Row A-D on the left -->
+		<group ref="pa0_rows_ad"><bounds x="0" y="20" width="16" height="95" /></group>
+		<!-- Row E-H on the right -->
+		<group ref="pa0_rows_eh"><bounds x="198" y="20" width="16" height="95" /></group>
+	</group>
+
+	<!-- ==================== MAIN VIEW ==================== -->
+	<view name="MK1 Panel">
+		<element ref="bg"><bounds x="0" y="0" width="542" height="200" /></element>
+
+		<!-- VFD Display -->
+		<element ref="vfd_bg"><bounds x="10" y="12" width="185" height="28" /></element>
+		<element name="vfd0"  ref="vfd_char" state="0"><bounds x="15" y="17" width="10" height="16" /></element>
+		<element name="vfd1"  ref="vfd_char" state="0"><bounds x="26" y="17" width="10" height="16" /></element>
+		<element name="vfd2"  ref="vfd_char" state="0"><bounds x="37" y="17" width="10" height="16" /></element>
+		<element name="vfd3"  ref="vfd_char" state="0"><bounds x="48" y="17" width="10" height="16" /></element>
+		<element name="vfd4"  ref="vfd_char" state="0"><bounds x="59" y="17" width="10" height="16" /></element>
+		<element name="vfd5"  ref="vfd_char" state="0"><bounds x="70" y="17" width="10" height="16" /></element>
+		<element name="vfd6"  ref="vfd_char" state="0"><bounds x="81" y="17" width="10" height="16" /></element>
+		<element name="vfd7"  ref="vfd_char" state="0"><bounds x="92" y="17" width="10" height="16" /></element>
+		<element name="vfd8"  ref="vfd_char" state="0"><bounds x="103" y="17" width="10" height="16" /></element>
+		<element name="vfd9"  ref="vfd_char" state="0"><bounds x="114" y="17" width="10" height="16" /></element>
+		<element name="vfd10" ref="vfd_char" state="0"><bounds x="125" y="17" width="10" height="16" /></element>
+		<element name="vfd11" ref="vfd_char" state="0"><bounds x="136" y="17" width="10" height="16" /></element>
+		<element name="vfd12" ref="vfd_char" state="0"><bounds x="147" y="17" width="10" height="16" /></element>
+		<element name="vfd13" ref="vfd_char" state="0"><bounds x="158" y="17" width="10" height="16" /></element>
+		<element name="vfd14" ref="vfd_char" state="0"><bounds x="169" y="17" width="10" height="16" /></element>
+		<element name="vfd15" ref="vfd_char" state="0"><bounds x="180" y="17" width="10" height="16" /></element>
+
+		<!-- Presets-RAM (K7, PA3 chain CB30-IC3) -->
+		<element ref="label_presets"><bounds x="5" y="48" width="80" height="8" /></element>
+		<group ref="pa3_presets"><bounds x="5" y="58" width="80" height="35" /></group>
+
+		<!-- Voice / Source Control (K6 + K2 bits 0-1) -->
+		<element ref="label_voicectl"><bounds x="95" y="48" width="100" height="8" /></element>
+		<group ref="pa3_voice_ctl"><bounds x="95" y="58" width="100" height="35" /></group>
+		<element ref="label_srcctl"><bounds x="95" y="96" width="100" height="8" /></element>
+
+		<!-- DMS Instruments 1-20 (K2 bits 2-7, K3, K4 bits 0-5) -->
+		<element ref="label_dms"><bounds x="5" y="108" width="200" height="8" /></element>
+		<group ref="pa1_dms"><bounds x="5" y="118" width="200" height="35" /></group>
+
+		<!-- CV Instruments 1-10 (K4 bits 6-7, K5) -->
+		<element ref="label_cv"><bounds x="215" y="108" width="100" height="8" /></element>
+		<group ref="pa2_cv"><bounds x="215" y="118" width="100" height="35" /></group>
+
+		<!-- Function Control Matrix -->
+		<!-- Cols 1-8 across the top -->
+		<group ref="pa0_matrix"><bounds x="320" y="5" width="218" height="115" /></group>
+	</view>
+</mamelayout>
