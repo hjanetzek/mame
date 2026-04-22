@@ -25,7 +25,8 @@
 
 ***************************************************************************/
 
-#pragma once
+#ifndef MAME_SOUND_WERSI_SLM2_H
+#define MAME_SOUND_WERSI_SLM2_H
 
 #include "cpu/z8/z8.h"
 #include "sound/dac.h"
@@ -136,3 +137,5 @@ private:
 
 // device type definition
 DECLARE_DEVICE_TYPE(WERSI_SLM2_VOICE, wersi_slm2_device)
+
+#endif // MAME_SOUND_WERSI_SLM2_H
