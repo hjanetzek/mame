@@ -49090,6 +49090,12 @@ t7000
 @source:wicat/wicat.cpp
 wicat
 
+@source:wersi/ex20.cpp
+ex20
+
+@source:wersi/slm2test.cpp
+slm2test
+
 @source:wing/luckgrln.cpp
 7smash
 7smasha

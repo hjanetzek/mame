@@ -25,6 +25,25 @@ public:
 	auto p2_out_cb() { return m_output_cb[2].bind(); }
 	auto p3_out_cb() { return m_output_cb[3].bind(); }
 
+	// Instruction trace callback — fires after each instruction with PC.
+	// Use register_read(offset) to access the Z8 register file.
+	// Lightweight: only fires when callback is set and PC matches filter.
+	using trace_cb = std::function<void(uint16_t pc, uint16_t prev_pc)>;
+	void set_trace_callback(trace_cb cb) { m_trace_cb = std::move(cb); }
+
+	// Read register file (public access for trace callback)
+	uint8_t read_register(uint8_t offset) const { return const_cast<z8_device*>(this)->register_read(offset); }
+	uint8_t read_flags() const { return m_flags; }
+
+	// Read prescaler value (PRE0/PRE1 are write-only registers, this reads the shadow)
+	uint8_t read_prescaler(int timer) const { return m_pre[timer]; }
+
+	// Read from PC trace ring buffer: age=0 is most recent, age=1 is one before, etc.
+	uint16_t read_pc_trace(int age) const {
+		int idx = ((m_pc_trace_idx - 1 - age) % PC_TRACE_SIZE + PC_TRACE_SIZE) % PC_TRACE_SIZE;
+		return m_pc_trace[idx];
+	}
+
 protected:
 	enum
 	{
@@ -129,11 +148,28 @@ private:
 	bool m_irq_taken;
 	bool m_irq_initialized;     // IRQ must be unlocked by EI after reset
 
+	// PC trace ring buffer for crash debugging
+	static constexpr int PC_TRACE_SIZE = 64;
+	uint16_t m_pc_trace[PC_TRACE_SIZE] = {};
+	int m_pc_trace_idx = 0;
+	void pc_trace_dump(const char *reason);
+
+	// Register write trace for R12/R13 crash debugging
+	static constexpr int REG_TRACE_SIZE = 32;
+	struct reg_trace_entry { uint16_t pc; uint8_t reg; uint8_t val; };
+	reg_trace_entry m_reg_trace[REG_TRACE_SIZE] = {};
+	int m_reg_trace_idx = 0;
+	void reg_trace_record(uint8_t reg, uint8_t val);
+	void reg_trace_dump();
+
 	// execution logic
 	int32_t m_icount;           // instruction counter
 
 	// timers
 	emu_timer *m_internal_timer[2];
+
+	// trace callback
+	trace_cb m_trace_cb;
 
 	bool get_serial_in();
 	void sio_receive();
@@ -194,7 +230,11 @@ private:
 	inline uint16_t fetch_word();
 	inline uint8_t register_read(uint8_t offset) { return m_regs.read_byte(offset); }
 	inline uint16_t register_pair_read(uint8_t offset);
-	inline void register_write(uint8_t offset, uint8_t data) { m_regs.write_byte(offset, data); }
+	inline void register_write(uint8_t offset, uint8_t data) {
+		m_regs.write_byte(offset, data);
+		if (offset == 0x0c || offset == 0x0d)
+			reg_trace_record(offset, data);
+	}
 	inline void register_pair_write(uint8_t offset, uint16_t data);
 	inline uint8_t get_working_register(int offset) const;
 	inline uint8_t get_register(uint8_t offset) const;
