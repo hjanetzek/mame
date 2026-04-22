@@ -105,9 +105,6 @@ private:
 	devcb_write_line m_rarc_cb;
 	devcb_write_line m_bright_cb;
 
-	// Local slave RAM (256 bytes) — used when no shared RAM is connected
-	uint8_t m_slave_ram[256];
-
 	// Shared slave RAM pointer (IC31: 6264, 8KB) — set by driver
 	// When set, Z8 LDE/LDEI accesses go through shared RAM instead of local
 	uint8_t *m_shared_ram = nullptr;
@@ -121,7 +118,6 @@ private:
 	uint8_t m_exsla1;         // pitch exponent bit 1
 	uint8_t m_port3_out;      // last port 3 output (for T_OUT edge detection)
 	uint8_t m_rarc_input;     // RARC bus state from master (0=master claimed, 1=free)
-	uint8_t m_raud;           // RAUD state (unused now — RAUD triggers IRQ3 directly)
 	uint8_t m_eclk;           // ECLK input state on P3.3
 
 	// audio output

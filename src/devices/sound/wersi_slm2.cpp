@@ -76,7 +76,6 @@ wersi_slm2_device::wersi_slm2_device(const machine_config &mconfig, const char *
 	, m_exsla1(0)
 	, m_port3_out(0)
 	, m_rarc_input(1)
-	, m_raud(0)
 	, m_eclk(0)
 	, m_dac_data(0)
 	, m_dac_output(0)
