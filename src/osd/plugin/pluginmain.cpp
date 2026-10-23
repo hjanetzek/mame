@@ -15,8 +15,10 @@
 
 #include "mame_plugin.h"
 #include "pluginosd.h"
+#include "pluginmidi.h"
 
 #include "imagedev/midiin.h"
+#include "imagedev/midiout.h"
 
 #include "dinvram.h"
 #include "drivenum.h"
@@ -310,6 +312,8 @@ struct mp_instance
 
 	// host thread state
 	std::uint64_t deficit = 0;
+	std::uint64_t block_start = 0;     // first frame of the last processed block
+	std::uint64_t block_end = 0;
 
 	std::string log_copy;
 
@@ -396,9 +400,11 @@ void mp_instance::emulation_thread(std::promise<std::string> started)
 
 		machine_config const config(system, options);
 
-		// connect every MIDI input of the machine to the host
+		// connect every MIDI input and output of the machine to the host
 		for (midiin_device &midiin : midiin_device_enumerator(config.root_device()))
 			options.image_option(midiin.instance_name()).specify(PLUGIN_MIDI_PORT_NAME);
+		for (midiout_device &midiout : midiout_device_enumerator(config.root_device()))
+			options.image_option(midiout.instance_name()).specify(PLUGIN_MIDI_PORT_NAME);
 
 		running_machine machine(config, manager);
 		manager.set_machine(&machine);
@@ -628,8 +634,22 @@ void mp_process(mp_instance *instance, const mp_midi_event *events, uint32_t eve
 		instance->underruns.fetch_add(missing, std::memory_order_relaxed);
 	}
 
+	instance->block_start = base;
+	instance->block_end = base + frames;
 	instance->played.store(base + frames, std::memory_order_release);
 	instance->notify_host();
+}
+
+uint32_t mp_midi_output(mp_instance *instance, mp_midi_event *events, uint32_t max_events, uint8_t *buffer, size_t buffer_size)
+{
+	std::uint64_t dropped = 0;
+	uint32_t const count = plugin_midi_record::read(
+			instance->io.midi_out, instance->block_start, instance->block_end,
+			events, max_events, buffer, buffer_size,
+			dropped);
+	if (dropped)
+		instance->io.midi_out_dropped.fetch_add(dropped, std::memory_order_relaxed);
+	return count;
 }
 
 void mp_set_offline(mp_instance *instance, int offline)

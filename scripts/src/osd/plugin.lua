@@ -101,6 +101,7 @@ project ("osd_" .. _OPTIONS["osd"])
 		MAME_DIR .. "src/osd/modules/osdwindow.cpp",
 		MAME_DIR .. "src/osd/modules/osdwindow.h",
 		MAME_DIR .. "src/osd/plugin/mame_plugin.h",
+		MAME_DIR .. "src/osd/plugin/pluginmidi.h",
 		MAME_DIR .. "src/osd/plugin/pluginosd.cpp",
 		MAME_DIR .. "src/osd/plugin/pluginosd.h",
 		MAME_DIR .. "src/osd/plugin/pluginstubs.cpp",

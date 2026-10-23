@@ -10,6 +10,8 @@
  *
  * CLAPHOST_STATE_IN=file loads the initial state from a file instead,
  * CLAPHOST_STATE_OUT=file writes the final state to a file.
+ * CLAPHOST_SYSEX="F0 .. F7" sends a SysEx message 9 seconds in; MIDI
+ * the plugin outputs is summarised and SysEx printed.
  *
  *   cc -O2 -o claphost src/plugin/clap/test/claphost.c -I3rdparty/clap/include -ldl
  *   ./claphost ./mame_synths.clap tx81z out.wav [seconds] [switch-to-machine]
@@ -47,7 +49,28 @@ typedef struct event_list
 
 static uint32_t in_size(const clap_input_events_t *list) { return ((const event_list *)list->ctx)->count; }
 static const clap_event_header_t *in_get(const clap_input_events_t *list, uint32_t index) { return ((const event_list *)list->ctx)->events[index]; }
-static bool out_try_push(const clap_output_events_t *list, const clap_event_header_t *event) { return false; }
+static unsigned out_midi, out_sysex;
+
+static bool out_try_push(const clap_output_events_t *list, const clap_event_header_t *event)
+{
+	(void)list;
+	if (event->space_id != CLAP_CORE_EVENT_SPACE_ID)
+		return false;
+	if (event->type == CLAP_EVENT_MIDI)
+	{
+		out_midi++;
+	}
+	else if (event->type == CLAP_EVENT_MIDI_SYSEX)
+	{
+		const clap_event_midi_sysex_t *sysex = (const clap_event_midi_sysex_t *)event;
+		out_sysex++;
+		printf("plugin sent SysEx (%u bytes, frame %u):", sysex->size, event->time);
+		for (uint32_t i = 0; (i < sysex->size) && (i < 16); i++)
+			printf(" %02X", sysex->buffer[i]);
+		printf("%s\n", (sysex->size > 16) ? " ..." : "");
+	}
+	return true;
+}
 
 /* streams */
 
@@ -105,6 +128,28 @@ static int render(const clap_plugin_t *plugin, const char *path, double seconds,
 	static const uint8_t notes[] = { 60, 64, 67, 72, 67, 64 };
 	uint32_t const boot = 8 * RATE, step = RATE / 2, length = RATE * 2 / 5;
 
+	/* optional SysEx to send */
+	uint8_t sysex_data[256];
+	uint32_t sysex_size = 0;
+	const char *sysex_env = getenv("CLAPHOST_SYSEX");
+	for (const char *p = sysex_env; p && *p && (sysex_size < sizeof(sysex_data)); )
+	{
+		char *end;
+		unsigned long const v = strtoul(p, &end, 16);
+		if (end == p)
+			break;
+		sysex_data[sysex_size++] = (uint8_t)v;
+		p = end;
+	}
+	clap_event_midi_sysex_t sysex_event;
+	memset(&sysex_event, 0, sizeof(sysex_event));
+	sysex_event.header.size = sizeof(sysex_event);
+	sysex_event.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+	sysex_event.header.type = CLAP_EVENT_MIDI_SYSEX;
+	sysex_event.buffer = sysex_data;
+	sysex_event.size = sysex_size;
+	uint32_t const sysex_block = 9 * RATE / BLOCK;
+
 	float left[BLOCK], right[BLOCK];
 	float *channels[2] = { left, right };
 	clap_audio_buffer_t output = { channels, NULL, 2, 0, 0 };
@@ -127,6 +172,8 @@ static int render(const clap_plugin_t *plugin, const char *path, double seconds,
 		list.count = 0;
 		if (param && (b == param_block))
 			list.events[list.count++] = &param->header;
+		if (sysex_size && (b == sysex_block))
+			list.events[list.count++] = &sysex_event.header;
 		for (uint32_t f = start; f < start + BLOCK; f++)
 		{
 			if (f < boot)
@@ -162,6 +209,7 @@ static int render(const clap_plugin_t *plugin, const char *path, double seconds,
 		}
 	}
 	fclose(wav);
+	printf("plugin sent %u MIDI and %u SysEx events\n", out_midi, out_sysex);
 	return 0;
 }
 

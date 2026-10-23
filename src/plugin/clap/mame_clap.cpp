@@ -180,7 +180,7 @@ private:
 	// extensions
 	uint32_t audio_ports_count(bool is_input) const { return is_input ? 0 : 1; }
 	bool audio_ports_get(uint32_t index, bool is_input, clap_audio_port_info_t *info) const;
-	uint32_t note_ports_count(bool is_input) const { return is_input ? 1 : 0; }
+	uint32_t note_ports_count(bool is_input) const { return 1; }
 	bool note_ports_get(uint32_t index, bool is_input, clap_note_port_info_t *info) const;
 	uint32_t latency_get() const { return m_instance ? mp_latency(m_instance) : 0; }
 	bool render_set(clap_plugin_render_mode mode);
@@ -194,6 +194,7 @@ private:
 	bool state_load(clap_istream_t const *stream);
 
 	void handle_param(clap_event_param_value_t const &event);
+	void send_midi(clap_output_events_t const *out);
 	void update_nvram();
 	int machine_index(std::string_view name) const;
 	void log(clap_log_severity severity, std::string const &message) const;
@@ -224,6 +225,10 @@ private:
 	static constexpr uint32_t MAX_EVENTS = 1024;
 	mp_midi_event m_events[MAX_EVENTS];
 	uint8_t m_event_bytes[MAX_EVENTS][3];
+
+	// MIDI sent by the machine during one block
+	mp_midi_event m_out_events[MAX_EVENTS];
+	uint8_t m_out_bytes[65536];
 };
 
 
@@ -406,6 +411,7 @@ clap_process_status mame_clap::process(clap_process_t const *process)
 	if (m_instance)
 	{
 		mp_process(m_instance, m_events, count, out, frames);
+		send_midi(process->out_events);
 	}
 	else
 	{
@@ -413,6 +419,42 @@ clap_process_status mame_clap::process(clap_process_t const *process)
 		std::fill_n(out[1], frames, 0.0f);
 	}
 	return CLAP_PROCESS_CONTINUE;
+}
+
+
+void mame_clap::send_midi(clap_output_events_t const *out)
+{
+	uint32_t const count = mp_midi_output(m_instance, m_out_events, MAX_EVENTS, m_out_bytes, sizeof(m_out_bytes));
+	for (uint32_t i = 0; i < count; i++)
+	{
+		mp_midi_event const &event = m_out_events[i];
+		clap_event_header_t header;
+		header.time = event.frame;
+		header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+		header.flags = 0;
+		if ((event.size <= 3) && (event.data[0] != 0xf0))
+		{
+			clap_event_midi_t midi = {};
+			midi.header = header;
+			midi.header.size = sizeof(midi);
+			midi.header.type = CLAP_EVENT_MIDI;
+			midi.port_index = 0;
+			std::memcpy(midi.data, event.data, event.size);
+			out->try_push(out, &midi.header);
+		}
+		else
+		{
+			// the host copies the data during try_push
+			clap_event_midi_sysex_t sysex = {};
+			sysex.header = header;
+			sysex.header.size = sizeof(sysex);
+			sysex.header.type = CLAP_EVENT_MIDI_SYSEX;
+			sysex.port_index = 0;
+			sysex.buffer = event.data;
+			sysex.size = event.size;
+			out->try_push(out, &sysex.header);
+		}
+	}
 }
 
 
@@ -450,12 +492,22 @@ bool mame_clap::audio_ports_get(uint32_t index, bool is_input, clap_audio_port_i
 
 bool mame_clap::note_ports_get(uint32_t index, bool is_input, clap_note_port_info_t *info) const
 {
-	if (!is_input || index)
+	if (index)
 		return false;
 	info->id = 0;
-	info->supported_dialects = CLAP_NOTE_DIALECT_MIDI | CLAP_NOTE_DIALECT_CLAP;
-	info->preferred_dialect = CLAP_NOTE_DIALECT_MIDI;
-	std::snprintf(info->name, sizeof(info->name), "%s", "MIDI In");
+	if (is_input)
+	{
+		info->supported_dialects = CLAP_NOTE_DIALECT_MIDI | CLAP_NOTE_DIALECT_CLAP;
+		info->preferred_dialect = CLAP_NOTE_DIALECT_MIDI;
+		std::snprintf(info->name, sizeof(info->name), "%s", "MIDI In");
+	}
+	else
+	{
+		// the machine's MIDI OUT, e.g. SysEx dumps for editors
+		info->supported_dialects = CLAP_NOTE_DIALECT_MIDI;
+		info->preferred_dialect = CLAP_NOTE_DIALECT_MIDI;
+		std::snprintf(info->name, sizeof(info->name), "%s", "MIDI Out");
+	}
 	return true;
 }
 

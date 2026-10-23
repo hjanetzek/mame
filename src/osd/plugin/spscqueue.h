@@ -54,6 +54,19 @@ public:
 
 	bool push(T const &value) noexcept { return push(&value, 1) == 1; }
 
+	// producer side: append all count elements or nothing
+	bool push_all(T const *data, std::size_t count) noexcept
+	{
+		std::size_t const head = m_head.load(std::memory_order_relaxed);
+		std::size_t const tail = m_tail.load(std::memory_order_acquire);
+		if ((capacity() - (head - tail)) < count)
+			return false;
+		for (std::size_t i = 0; i < count; i++)
+			m_data[(head + i) & m_mask] = data[i];
+		m_head.store(head + count, std::memory_order_release);
+		return true;
+	}
+
 	// consumer side: look at the oldest element without removing it
 	T const *front() const noexcept
 	{
@@ -61,6 +74,18 @@ public:
 		if (m_head.load(std::memory_order_acquire) == tail)
 			return nullptr;
 		return &m_data[tail & m_mask];
+	}
+
+	// consumer side: copy up to count elements without removing them,
+	// returns the number copied
+	std::size_t peek(T *data, std::size_t count) const noexcept
+	{
+		std::size_t const tail = m_tail.load(std::memory_order_relaxed);
+		std::size_t const head = m_head.load(std::memory_order_acquire);
+		count = std::min(count, head - tail);
+		for (std::size_t i = 0; i < count; i++)
+			data[i] = m_data[(tail + i) & m_mask];
+		return count;
 	}
 
 	// consumer side: remove up to count elements, returns the number removed;

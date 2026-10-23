@@ -15,6 +15,7 @@
 
 #include "modules/lib/osdobj_common.h"
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -37,6 +38,7 @@ struct plugin_io
 		: sample_rate(rate)
 		, audio(audio_frames * 2)
 		, midi(midi_bytes)
+		, midi_out(midi_bytes * 4)
 	{
 	}
 
@@ -49,6 +51,11 @@ struct plugin_io
 
 	// timestamped bytes, host to emulation thread
 	spsc_queue<midi_byte> midi;
+
+	// complete timestamped messages (see plugin_midi_record), emulation
+	// thread to host
+	spsc_queue<std::uint8_t> midi_out;
+	std::atomic<std::uint64_t> midi_out_dropped{ 0 };
 
 	std::mutex log_mutex;
 	std::string log_text;

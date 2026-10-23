@@ -35,7 +35,7 @@ extern "C" {
 #define MP_API __attribute__((visibility("default")))
 #endif
 
-#define MP_API_VERSION 2
+#define MP_API_VERSION 3
 
 typedef struct mp_instance mp_instance;
 
@@ -79,6 +79,13 @@ MP_API uint32_t mp_latency(const mp_instance *instance);
 /* realtime: queue the block's MIDI events (sorted by frame) and fill
    frames of stereo audio into out[0] and out[1] */
 MP_API void mp_process(mp_instance *instance, const mp_midi_event *events, uint32_t event_count, float *const *out, uint32_t frames);
+
+/* realtime: after mp_process, fetch the MIDI messages the machine sent
+   during that block (with frame offsets into it), storing their bytes in
+   buffer; returns the number of events.  Messages that don't fit stay
+   queued for the next call, a single message larger than buffer is
+   dropped. */
+MP_API uint32_t mp_midi_output(mp_instance *instance, mp_midi_event *events, uint32_t max_events, uint8_t *buffer, size_t buffer_size);
 
 /* offline mode: mp_process waits for the emulation instead of
    outputting silence on underrun, producing deterministic output */

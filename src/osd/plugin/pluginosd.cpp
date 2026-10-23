@@ -10,6 +10,7 @@
 #include "emu.h"
 
 #include "pluginosd.h"
+#include "pluginmidi.h"
 
 #include "interface/midiport.h"
 
@@ -18,6 +19,7 @@
 #include "strformat.h"
 
 #include <algorithm>
+#include <vector>
 #include <cstdio>
 
 
@@ -67,10 +69,35 @@ private:
 };
 
 
+//============================================================
+//  plugin_midi_output - passes the machine's MIDI output to
+//  the host as complete messages, timestamped with the frame
+//  at which their last byte was sent
+//============================================================
+
 class plugin_midi_output : public osd::midi_output_port
 {
 public:
-	virtual void write(uint8_t data) override { }
+	plugin_midi_output(running_machine &machine, plugin_io &io) : m_machine(machine), m_io(io) { }
+
+	virtual void write(uint8_t data) override
+	{
+		m_assembler.write(
+				data,
+				[this] (uint8_t const *message, std::size_t size)
+				{
+					std::uint64_t const frame = m_machine.time().as_ticks(m_io.sample_rate);
+					if (!plugin_midi_record::push(m_io.midi_out, frame, message, size, m_record))
+						m_io.midi_out_dropped.fetch_add(1, std::memory_order_relaxed);
+				},
+				[this] () { m_io.midi_out_dropped.fetch_add(1, std::memory_order_relaxed); });
+	}
+
+private:
+	running_machine &m_machine;
+	plugin_io &m_io;
+	plugin_midi_assembler m_assembler;
+	std::vector<uint8_t> m_record;
 };
 
 } // anonymous namespace
@@ -174,7 +201,7 @@ std::unique_ptr<osd::midi_output_port> plugin_osd_interface::create_midi_output(
 {
 	if (name != PLUGIN_MIDI_PORT_NAME)
 		return nullptr;
-	return std::make_unique<plugin_midi_output>();
+	return std::make_unique<plugin_midi_output>(machine(), m_io);
 }
 
 std::vector<osd::midi_port_info> plugin_osd_interface::list_midi_ports()
