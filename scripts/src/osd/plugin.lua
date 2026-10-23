@@ -48,8 +48,14 @@ function maintargetosdoptions(_target,_subtarget)
 		-- export only the mp_* C API from the shared library
 		linkoptions {
 			"-Wl,--version-script=" .. MAME_DIR .. "src/osd/plugin/mame_plugin.map",
-			"-Wl,-z,defs",
 		}
+		-- report unresolved symbols at link time; sanitizer runtimes are
+		-- provided by the host executable, so allow them to stay undefined
+		if not _OPTIONS["SANITIZE"] then
+			linkoptions {
+				"-Wl,-z,defs",
+			}
+		end
 	elseif _OPTIONS["targetos"]=="macosx" then
 		linkoptions {
 			"-Wl,-exported_symbols_list," .. MAME_DIR .. "src/osd/plugin/mame_plugin.exp",

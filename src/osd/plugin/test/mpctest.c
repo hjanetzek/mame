@@ -6,12 +6,17 @@
  * Loads the library, plays a fixed note pattern into a machine and
  * writes the output to a 16-bit stereo WAV file.
  *
+ * With MPCTEST_INSTANCES=n, n instances are created and rendered
+ * concurrently on separate threads, writing <out>.<i>.wav and using
+ * <datapath>.<i> as data directory.
+ *
  *   cc -O2 -o mpctest src/osd/plugin/test/mpctest.c -Isrc/osd/plugin -ldl -lpthread
  *   ./mpctest ./libmameplugin_synths.so tx81z roms out.wav [seconds] [datapath] [--realtime]
  */
 #include "mame_plugin.h"
 
 #include <dlfcn.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,9 +25,11 @@
 #define RATE 48000
 #define BLOCK 256
 
+#define MAX_INSTANCES 16
+
 #define LOAD(name) \
-	name##_fn name = (name##_fn)dlsym(lib, #name); \
-	if (!name) { fprintf(stderr, "missing symbol %s\n", #name); return 1; }
+	p_##name = (name##_fn)dlsym(lib, #name); \
+	if (!p_##name) { fprintf(stderr, "missing symbol %s\n", #name); return 1; }
 
 typedef uint32_t (*mp_machine_count_fn)(void);
 typedef const char *(*mp_machine_name_fn)(uint32_t);
@@ -35,6 +42,40 @@ typedef void (*mp_set_offline_fn)(mp_instance *, int);
 typedef uint64_t (*mp_underruns_fn)(const mp_instance *);
 typedef const char *(*mp_log_fn)(mp_instance *);
 
+static mp_build_version_fn p_mp_build_version;
+static mp_machine_count_fn p_mp_machine_count;
+static mp_machine_name_fn p_mp_machine_name;
+static mp_create_fn p_mp_create;
+static mp_destroy_fn p_mp_destroy;
+static mp_latency_fn p_mp_latency;
+static mp_process_fn p_mp_process;
+static mp_set_offline_fn p_mp_set_offline;
+static mp_underruns_fn p_mp_underruns;
+static mp_log_fn p_mp_log;
+
+/* call through the pointers resolved with dlsym */
+#define mp_build_version p_mp_build_version
+#define mp_machine_count p_mp_machine_count
+#define mp_machine_name p_mp_machine_name
+#define mp_create p_mp_create
+#define mp_destroy p_mp_destroy
+#define mp_latency p_mp_latency
+#define mp_process p_mp_process
+#define mp_set_offline p_mp_set_offline
+#define mp_underruns p_mp_underruns
+#define mp_log p_mp_log
+
+typedef struct job
+{
+	int index;
+	mp_instance *inst;
+	char outpath[1024];
+	char datapath[1024];
+	double seconds;
+	int realtime;
+	int result;
+} job;
+
 static void put32(FILE *f, uint32_t v) { fputc(v & 0xff, f); fputc((v >> 8) & 0xff, f); fputc((v >> 16) & 0xff, f); fputc(v >> 24, f); }
 static void put16(FILE *f, uint16_t v) { fputc(v & 0xff, f); fputc(v >> 8, f); }
 
@@ -45,70 +86,19 @@ static int16_t to16(float v)
 	return (int16_t)(v * 32767.0f);
 }
 
-int main(int argc, char **argv)
+static void *render(void *param)
 {
-	if (argc < 5)
-	{
-		fprintf(stderr, "usage: %s <library> <machine> <rompath> <out.wav> [seconds] [datapath] [--realtime]\n", argv[0]);
-		return 1;
-	}
+	job *const j = (job *)param;
+	mp_instance *const inst = j->inst;
 
-	const char *libpath = argv[1];
-	const char *machine = argv[2];
-	const char *rompath = argv[3];
-	const char *outpath = argv[4];
-	double seconds = (argc > 5) ? atof(argv[5]) : 16.0;
-	const char *datapath = (argc > 6) ? argv[6] : NULL;
-	int realtime = (argc > 7) && !strcmp(argv[7], "--realtime");
-
-	void *lib = dlopen(libpath, RTLD_NOW | RTLD_LOCAL);
-	if (!lib)
-	{
-		fprintf(stderr, "dlopen: %s\n", dlerror());
-		return 1;
-	}
-
-	LOAD(mp_build_version)
-	LOAD(mp_machine_count)
-	LOAD(mp_machine_name)
-	LOAD(mp_create)
-	LOAD(mp_destroy)
-	LOAD(mp_latency)
-	LOAD(mp_process)
-	LOAD(mp_set_offline)
-	LOAD(mp_underruns)
-	LOAD(mp_log)
-
-	printf("MAME %s, MIDI machines:", mp_build_version());
-	for (uint32_t i = 0; i < mp_machine_count(); i++)
-		printf(" %s", mp_machine_name(i));
-	printf("\n");
-
-	mp_config config;
-	memset(&config, 0, sizeof(config));
-	config.driver = machine;
-	config.rompath = rompath;
-	config.datapath = datapath;
-	config.sample_rate = RATE;
-	config.max_block_frames = BLOCK;
-
-	char error[1024];
-	mp_instance *inst = mp_create(&config, error, sizeof(error));
-	if (!inst)
-	{
-		fprintf(stderr, "mp_create failed:\n%s", error);
-		return 1;
-	}
-	printf("latency %u frames\n", mp_latency(inst));
-	mp_set_offline(inst, !realtime);
-
-	FILE *wav = fopen(outpath, "wb");
+	FILE *wav = fopen(j->outpath, "wb");
 	if (!wav)
 	{
-		perror(outpath);
-		return 1;
+		perror(j->outpath);
+		j->result = 1;
+		return NULL;
 	}
-	uint32_t const total = (uint32_t)(seconds * RATE);
+	uint32_t const total = (uint32_t)(j->seconds * RATE);
 	uint32_t const blocks = (total + BLOCK - 1) / BLOCK;
 	uint32_t const datasize = blocks * BLOCK * 4;
 	fwrite("RIFF", 1, 4, wav); put32(wav, 36 + datasize); fwrite("WAVEfmt ", 1, 8, wav);
@@ -160,9 +150,9 @@ int main(int argc, char **argv)
 
 		const char *log = mp_log(inst);
 		if (log)
-			fputs(log, stderr);
+			fprintf(stderr, "[%d] %s", j->index, log);
 
-		if (realtime)
+		if (j->realtime)
 		{
 			next.tv_nsec += (long)BLOCK * 1000000000L / RATE;
 			while (next.tv_nsec >= 1000000000L) { next.tv_nsec -= 1000000000L; next.tv_sec++; }
@@ -170,9 +160,108 @@ int main(int argc, char **argv)
 		}
 	}
 	fclose(wav);
+	j->result = 0;
+	return NULL;
+}
 
-	printf("underruns: %llu frames\n", (unsigned long long)mp_underruns(inst));
-	mp_destroy(inst);
+int main(int argc, char **argv)
+{
+	if (argc < 5)
+	{
+		fprintf(stderr, "usage: %s <library> <machine> <rompath> <out.wav> [seconds] [datapath] [--realtime]\n", argv[0]);
+		return 1;
+	}
+
+	const char *libpath = argv[1];
+	const char *machine = argv[2];
+	const char *rompath = argv[3];
+	const char *outpath = argv[4];
+	double seconds = (argc > 5) ? atof(argv[5]) : 16.0;
+	const char *datapath = (argc > 6) ? argv[6] : NULL;
+	int realtime = (argc > 7) && !strcmp(argv[7], "--realtime");
+	const char *instenv = getenv("MPCTEST_INSTANCES");
+	int instances = instenv ? atoi(instenv) : 1;
+	if ((instances < 1) || (instances > MAX_INSTANCES))
+	{
+		fprintf(stderr, "MPCTEST_INSTANCES must be between 1 and %d\n", MAX_INSTANCES);
+		return 1;
+	}
+
+	void *lib = dlopen(libpath, RTLD_NOW | RTLD_LOCAL);
+	if (!lib)
+	{
+		fprintf(stderr, "dlopen: %s\n", dlerror());
+		return 1;
+	}
+
+	LOAD(mp_build_version)
+	LOAD(mp_machine_count)
+	LOAD(mp_machine_name)
+	LOAD(mp_create)
+	LOAD(mp_destroy)
+	LOAD(mp_latency)
+	LOAD(mp_process)
+	LOAD(mp_set_offline)
+	LOAD(mp_underruns)
+	LOAD(mp_log)
+
+	printf("MAME %s, MIDI machines:", mp_build_version());
+	for (uint32_t i = 0; i < mp_machine_count(); i++)
+		printf(" %s", mp_machine_name(i));
+	printf("\n");
+
+	/* create all instances on the main thread, as a host would */
+	static job jobs[MAX_INSTANCES];
+	for (int i = 0; i < instances; i++)
+	{
+		job *const j = &jobs[i];
+		j->index = i;
+		j->seconds = seconds;
+		j->realtime = realtime;
+		if (instances == 1)
+		{
+			snprintf(j->outpath, sizeof(j->outpath), "%s", outpath);
+			snprintf(j->datapath, sizeof(j->datapath), "%s", datapath ? datapath : "");
+		}
+		else
+		{
+			snprintf(j->outpath, sizeof(j->outpath), "%s.%d.wav", outpath, i);
+			snprintf(j->datapath, sizeof(j->datapath), "%s.%d", datapath ? datapath : "data", i);
+		}
+
+		mp_config config;
+		memset(&config, 0, sizeof(config));
+		config.driver = machine;
+		config.rompath = rompath;
+		config.datapath = j->datapath[0] ? j->datapath : NULL;
+		config.sample_rate = RATE;
+		config.max_block_frames = BLOCK;
+
+		char error[1024];
+		j->inst = mp_create(&config, error, sizeof(error));
+		if (!j->inst)
+		{
+			fprintf(stderr, "mp_create %d failed:\n%s", i, error);
+			return 1;
+		}
+		printf("instance %d: latency %u frames\n", i, mp_latency(j->inst));
+		mp_set_offline(j->inst, !realtime);
+	}
+
+	/* render concurrently, each instance on its own thread */
+	pthread_t threads[MAX_INSTANCES];
+	for (int i = 0; i < instances; i++)
+		pthread_create(&threads[i], NULL, render, &jobs[i]);
+	int result = 0;
+	for (int i = 0; i < instances; i++)
+	{
+		pthread_join(threads[i], NULL);
+		result |= jobs[i].result;
+		printf("instance %d: underruns %llu frames\n", i, (unsigned long long)mp_underruns(jobs[i].inst));
+	}
+
+	for (int i = 0; i < instances; i++)
+		mp_destroy(jobs[i].inst);
 	dlclose(lib);
-	return 0;
+	return result;
 }

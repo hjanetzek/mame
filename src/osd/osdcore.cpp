@@ -16,9 +16,17 @@
 #include "strconv.h"
 #endif
 
+#if defined(OSD_PLUGIN)
+// every plugin instance creates and destroys its OSD on its own emulation
+// thread, so give each thread its own stack to route output per instance
+#define OSD_OUTPUT_STORAGE thread_local
+#else
+#define OSD_OUTPUT_STORAGE
+#endif
+
 static const int MAXSTACK = 10;
-static osd_output *m_stack[MAXSTACK];
-static int m_ptr = -1;
+static OSD_OUTPUT_STORAGE osd_output *m_stack[MAXSTACK];
+static OSD_OUTPUT_STORAGE int m_ptr = -1;
 
 /*-------------------------------------------------
     osd_output
