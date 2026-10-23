@@ -931,7 +931,12 @@ ru_imgformat render_detect_image(util::random_read &file) noexcept
 			return RENDUTIL_IMGFORMAT_PNG;
 	}
 
-	// JPEG: attempt to read header with libjpeg
+	// JPEG: data must start with a start of image marker, then attempt to
+	// read header with libjpeg (checking the marker first avoids setting up
+	// libjpeg and unwinding with longjmp for data that can't be JPEG)
+	u8 soi[2];
+	auto const [soierr, soilen] = util::read_at(file, 0, soi, sizeof(soi));
+	if (!soierr && (sizeof(soi) == soilen) && (0xff == soi[0]) && (0xd8 == soi[1]))
 	{
 		jpeg_decompress_struct cinfo;
 		jpeg_setjmp_error_mgr jerr;
