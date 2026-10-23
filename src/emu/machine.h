@@ -164,6 +164,9 @@ public:
 
 	// immediate operations
 	int run(bool quiet);
+	bool run_start(bool quiet);
+	bool run_until(const attotime &target);
+	int run_stop();
 	void pause();
 	void resume();
 	void toggle_pause();
@@ -250,6 +253,7 @@ private:
 	template <typename T> struct is_null { template <typename U> static bool value(U &&x) { return false; } };
 	template <typename T> struct is_null<T *> { template <typename U> static bool value(U &&x) { return !x; } };
 	void start();
+	int handle_run_exception();
 	void set_saveload_filename(std::string &&filename);
 	void handle_saveload();
 	void soft_reset(s32 param = 0);
@@ -294,6 +298,7 @@ private:
 	bool                    m_paused;               // paused?
 	bool                    m_hard_reset_pending;   // is a hard reset pending?
 	bool                    m_exit_pending;         // is an exit pending?
+	int                     m_run_error;            // error code from run_start/run_until
 	emu_timer *             m_soft_reset_timer;     // timer used to schedule a soft reset
 
 	// misc state

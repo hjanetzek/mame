@@ -102,6 +102,7 @@ running_machine::running_machine(const machine_config &_config, machine_manager 
 	, m_paused(false)
 	, m_hard_reset_pending(false)
 	, m_exit_pending(false)
+	, m_run_error(EMU_ERR_NONE)
 	, m_soft_reset_timer(nullptr)
 	, m_rand_seed(0x9d14abd7)
 	, m_basename(_config.gamedrv().name)
@@ -360,7 +361,25 @@ void running_machine::start()
 
 int running_machine::run(bool quiet)
 {
-	int error = EMU_ERR_NONE;
+	if (run_start(quiet))
+	{
+		// run the CPUs until a reset or exit
+		while (run_until(attotime::never)) { }
+	}
+	return run_stop();
+}
+
+
+//-------------------------------------------------
+//  run_start - initialize the machine and take
+//  it to the running phase; returns false on
+//  error, in which case run_stop must still be
+//  called
+//-------------------------------------------------
+
+bool running_machine::run_start(bool quiet)
+{
+	m_run_error = EMU_ERR_NONE;
 
 	// use try/catch for deep error recovery
 	try
@@ -429,9 +448,31 @@ int running_machine::run(bool quiet)
 		// break out to our async javascript loop and halt
 		emscripten_set_running_machine(this);
 #endif
+	}
+	catch (...)
+	{
+		m_run_error = handle_run_exception();
+		return false;
+	}
+	return true;
+}
 
-		// run the CPUs until a reset or exit
-		while ((!m_hard_reset_pending && !m_exit_pending) || m_saveload_schedule != saveload_schedule::NONE)
+
+//-------------------------------------------------
+//  run_until - execute the machine until the
+//  given emulated time is reached or a reset or
+//  exit is pending; returns false once the
+//  machine should be stopped with run_stop
+//-------------------------------------------------
+
+bool running_machine::run_until(const attotime &target)
+{
+	if (m_run_error != EMU_ERR_NONE)
+		return false;
+
+	try
+	{
+		while (((!m_hard_reset_pending && !m_exit_pending) || m_saveload_schedule != saveload_schedule::NONE) && (time() < target))
 		{
 			auto profile = g_profiler.start(PROFILER_EXTRA);
 
@@ -443,54 +484,50 @@ int running_machine::run(bool quiet)
 			{
 				m_video->frame_update();
 				sound().mapping_update();
+				if (target != attotime::never)
+					break;
 			}
 
 			// handle save/load
 			if (m_saveload_schedule != saveload_schedule::NONE)
 				handle_saveload();
 		}
-		m_manager.http()->clear();
-
-		// and out via the exit phase
-		m_current_phase = machine_phase::EXIT;
-
-		// save the NVRAM and configuration
-		sound().ui_mute(true);
-		if (options().nvram_save())
-			nvram_save();
-		m_configuration->save_settings();
-	}
-	catch (emu_fatalerror const &fatal)
-	{
-		osd_printf_error("Fatal error: %s\n", fatal.what());
-		error = EMU_ERR_FATALERROR;
-		if (fatal.exitcode() != 0)
-			error = fatal.exitcode();
-	}
-	catch (emu_exception const &)
-	{
-		osd_printf_error("Caught unhandled emulator exception\n");
-		error = EMU_ERR_FATALERROR;
-	}
-	catch (binding_type_exception const &btex)
-	{
-		osd_printf_error("Error performing a late bind of function expecting type %s to instance of type %s\n", btex.target_type().name(), btex.actual_type().name());
-		error = EMU_ERR_FATALERROR;
-	}
-	catch (tag_add_exception const &aex)
-	{
-		osd_printf_error("Tag '%s' already exists in tagged map\n", aex.tag());
-		error = EMU_ERR_FATALERROR;
-	}
-	catch (std::exception const &ex)
-	{
-		osd_printf_error("Caught unhandled %s exception: %s\n", typeid(ex).name(), ex.what());
-		error = EMU_ERR_FATALERROR;
 	}
 	catch (...)
 	{
-		osd_printf_error("Caught unhandled exception\n");
-		error = EMU_ERR_FATALERROR;
+		m_run_error = handle_run_exception();
+		return false;
+	}
+	return (!m_hard_reset_pending && !m_exit_pending) || m_saveload_schedule != saveload_schedule::NONE;
+}
+
+
+//-------------------------------------------------
+//  run_stop - take the machine through the exit
+//  phase and return the final error code
+//-------------------------------------------------
+
+int running_machine::run_stop()
+{
+	if (m_run_error == EMU_ERR_NONE)
+	{
+		try
+		{
+			m_manager.http()->clear();
+
+			// and out via the exit phase
+			m_current_phase = machine_phase::EXIT;
+
+			// save the NVRAM and configuration
+			sound().ui_mute(true);
+			if (options().nvram_save())
+				nvram_save();
+			m_configuration->save_settings();
+		}
+		catch (...)
+		{
+			m_run_error = handle_run_exception();
+		}
 	}
 
 	// make sure our phase is set properly before cleaning up,
@@ -503,6 +540,49 @@ int running_machine::run(bool quiet)
 
 	// close the logfile
 	m_logfile.reset();
+	return m_run_error;
+}
+
+
+//-------------------------------------------------
+//  handle_run_exception - report the exception
+//  currently being handled and return the
+//  corresponding error code
+//-------------------------------------------------
+
+int running_machine::handle_run_exception()
+{
+	int error = EMU_ERR_FATALERROR;
+	try
+	{
+		throw;
+	}
+	catch (emu_fatalerror const &fatal)
+	{
+		osd_printf_error("Fatal error: %s\n", fatal.what());
+		if (fatal.exitcode() != 0)
+			error = fatal.exitcode();
+	}
+	catch (emu_exception const &)
+	{
+		osd_printf_error("Caught unhandled emulator exception\n");
+	}
+	catch (binding_type_exception const &btex)
+	{
+		osd_printf_error("Error performing a late bind of function expecting type %s to instance of type %s\n", btex.target_type().name(), btex.actual_type().name());
+	}
+	catch (tag_add_exception const &aex)
+	{
+		osd_printf_error("Tag '%s' already exists in tagged map\n", aex.tag());
+	}
+	catch (std::exception const &ex)
+	{
+		osd_printf_error("Caught unhandled %s exception: %s\n", typeid(ex).name(), ex.what());
+	}
+	catch (...)
+	{
+		osd_printf_error("Caught unhandled exception\n");
+	}
 	return error;
 }
 
