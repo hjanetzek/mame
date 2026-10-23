@@ -8,6 +8,9 @@
  * parameter (handling the restart request like a host would) and saves
  * the state again.
  *
+ * CLAPHOST_STATE_IN=file loads the initial state from a file instead,
+ * CLAPHOST_STATE_OUT=file writes the final state to a file.
+ *
  *   cc -O2 -o claphost src/plugin/clap/test/claphost.c -I3rdparty/clap/include -ldl
  *   ./claphost ./mame_synths.clap tx81z out.wav [seconds] [switch-to-machine]
  */
@@ -25,7 +28,7 @@ static int restart_requested;
 
 /* host */
 
-static const void *host_get_extension(const clap_host_t *host, const char *id) { return NULL; }
+static const void *host_get_extension(const clap_host_t *host, const char *id) { (void)host; (void)id; return NULL; }
 static void host_request_restart(const clap_host_t *host) { restart_requested = 1; printf("host: restart requested\n"); }
 static void host_request_process(const clap_host_t *host) { }
 static void host_request_callback(const clap_host_t *host) { }
@@ -50,7 +53,7 @@ static bool out_try_push(const clap_output_events_t *list, const clap_event_head
 
 typedef struct buffer
 {
-	char data[4096];
+	char data[1 << 20];
 	size_t size, pos;
 } buffer;
 
@@ -218,8 +221,19 @@ int main(int argc, char **argv)
 	printf("\n");
 
 	/* select the machine through the state, as a host restoring a project */
-	buffer sbuf = { { 0 }, 0, 0 };
-	sbuf.size = (size_t)snprintf(sbuf.data, sizeof(sbuf.data), "machine=%s\n", machine);
+	static buffer sbuf;
+	const char *state_in = getenv("CLAPHOST_STATE_IN");
+	if (state_in)
+	{
+		FILE *f = fopen(state_in, "rb");
+		CHECK(f);
+		sbuf.size = fread(sbuf.data, 1, sizeof(sbuf.data), f);
+		fclose(f);
+	}
+	else
+	{
+		sbuf.size = (size_t)snprintf(sbuf.data, sizeof(sbuf.data), "mame-plugin-state 1\nmachine=%s\n", machine);
+	}
 	clap_istream_t istream = { &sbuf, stream_read };
 	CHECK(state->load(plugin, &istream));
 
@@ -260,10 +274,20 @@ int main(int argc, char **argv)
 	}
 
 	/* the saved state names the current machine */
-	buffer obuf = { { 0 }, 0, 0 };
+	static buffer obuf;
 	clap_ostream_t ostream = { &obuf, stream_write };
 	CHECK(state->save(plugin, &ostream));
-	printf("state: %.*s", (int)obuf.size, obuf.data);
+	const char *nvram = strstr(obuf.data, "nvram=");
+	printf("state: %d bytes, %.*s\n", (int)obuf.size, (int)strcspn(obuf.data + 20, "\n"), obuf.data + 20);
+	if (nvram)
+		printf("state: %.*s\n", (int)strcspn(nvram, "\n"), nvram);
+	const char *state_out = getenv("CLAPHOST_STATE_OUT");
+	if (state_out)
+	{
+		FILE *f = fopen(state_out, "wb");
+		CHECK(f && (fwrite(obuf.data, 1, obuf.size, f) == obuf.size));
+		fclose(f);
+	}
 
 	plugin->destroy(plugin);
 	entry->deinit();

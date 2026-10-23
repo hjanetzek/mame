@@ -18,11 +18,15 @@
 
 #include "imagedev/midiin.h"
 
+#include "dinvram.h"
 #include "drivenum.h"
 #include "emuopts.h"
 #include "main.h"
 #include "ui/uimain.h"
 #include "video.h"
+
+#include "ioprocs.h"
+#include "ioprocsvec.h"
 
 #include "modules/input/input_module.h"
 #include "modules/midi/midi_module.h"
@@ -34,6 +38,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <cstdlib>
 #include <cstring>
 #include <future>
@@ -69,19 +75,133 @@ bool emulator_info::standalone() { return true; }
 namespace {
 
 //**************************************************************************
+//  NVRAM
+//**************************************************************************
+
+// NVRAM of all devices as one blob: "MPNV", u32 version, u32 count, then
+// for each device u32 tag length, tag, u32 data length, data (little endian)
+
+constexpr char NVRAM_MAGIC[4] = { 'M', 'P', 'N', 'V' };
+constexpr u32 NVRAM_VERSION = 1;
+
+void put_u32(std::vector<u8> &out, u32 value)
+{
+	for (int i = 0; i < 4; i++)
+		out.push_back(u8(value >> (i * 8)));
+}
+
+bool get_u32(u8 const *&ptr, u8 const *end, u32 &value)
+{
+	if ((end - ptr) < 4)
+		return false;
+	value = u32(ptr[0]) | (u32(ptr[1]) << 8) | (u32(ptr[2]) << 16) | (u32(ptr[3]) << 24);
+	ptr += 4;
+	return true;
+}
+
+std::vector<u8> collect_nvram(running_machine &machine)
+{
+	std::vector<u8> result(std::begin(NVRAM_MAGIC), std::end(NVRAM_MAGIC));
+	put_u32(result, NVRAM_VERSION);
+	std::size_t const count_pos = result.size();
+	put_u32(result, 0);
+
+	u32 count = 0;
+	for (device_nvram_interface &nvram : nvram_interface_enumerator(machine.root_device()))
+	{
+		if (!nvram.nvram_can_save())
+			continue;
+
+		std::vector<u8> data;
+		util::vector_read_write_adapter<u8> stream(data);
+		if (!nvram.nvram_save(stream))
+		{
+			osd_printf_error("Error saving NVRAM of %s\n", nvram.device().tag());
+			continue;
+		}
+
+		std::string_view const tag(nvram.device().tag());
+		put_u32(result, u32(tag.size()));
+		result.insert(result.end(), tag.begin(), tag.end());
+		put_u32(result, u32(data.size()));
+		result.insert(result.end(), data.begin(), data.end());
+		count++;
+	}
+
+	if (!count)
+		return std::vector<u8>();
+	for (int i = 0; i < 4; i++)
+		result[count_pos + i] = u8(count >> (i * 8));
+	return result;
+}
+
+void apply_nvram(running_machine &machine, std::vector<u8> const &blob)
+{
+	u8 const *ptr = blob.data();
+	u8 const *const end = ptr + blob.size();
+	u32 version, count;
+	if ((blob.size() < sizeof(NVRAM_MAGIC)) || std::memcmp(ptr, NVRAM_MAGIC, sizeof(NVRAM_MAGIC)))
+	{
+		osd_printf_error("Ignoring NVRAM data in unknown format\n");
+		return;
+	}
+	ptr += sizeof(NVRAM_MAGIC);
+	if (!get_u32(ptr, end, version) || (version != NVRAM_VERSION) || !get_u32(ptr, end, count))
+	{
+		osd_printf_error("Ignoring NVRAM data of unsupported version\n");
+		return;
+	}
+
+	for (u32 i = 0; i < count; i++)
+	{
+		u32 tag_size, data_size;
+		if (!get_u32(ptr, end, tag_size) || (u32(end - ptr) < tag_size))
+			break;
+		std::string const tag(reinterpret_cast<char const *>(ptr), tag_size);
+		ptr += tag_size;
+		if (!get_u32(ptr, end, data_size) || (u32(end - ptr) < data_size))
+			break;
+
+		device_t *const device = machine.root_device().subdevice(tag);
+		device_nvram_interface *nvram = nullptr;
+		if (!device || !device->interface(nvram))
+		{
+			osd_printf_warning("Ignoring NVRAM data for unknown device %s\n", tag);
+		}
+		else
+		{
+			util::random_read::ptr const stream = util::ram_read(ptr, data_size);
+			if (!stream || !nvram->nvram_load(*stream))
+				osd_printf_error("Error loading NVRAM of %s\n", tag);
+		}
+		ptr += data_size;
+	}
+}
+
+
+//**************************************************************************
 //  MACHINE MANAGER
 //**************************************************************************
 
 class plugin_machine_manager : public machine_manager
 {
 public:
-	plugin_machine_manager(emu_options &options, osd_interface &osd) : machine_manager(options, osd) { }
+	plugin_machine_manager(emu_options &options, osd_interface &osd, std::vector<u8> const &nvram)
+		: machine_manager(options, osd)
+		, m_nvram(nvram)
+	{
+	}
 
+	// called after NVRAM was loaded from files and before the first reset
 	virtual void ui_initialize(running_machine &machine) override
 	{
 		// the throttle option is normally applied by the frontend UI;
 		// the host drives the emulation, so never throttle
 		machine.video().set_throttled(false);
+
+		// NVRAM provided by the host replaces what was loaded from files
+		if (!m_nvram.empty())
+			apply_nvram(machine, m_nvram);
 	}
 
 	virtual ui_manager *create_ui(running_machine &machine) override
@@ -91,6 +211,7 @@ public:
 	}
 
 private:
+	std::vector<u8> const &m_nvram;
 	std::unique_ptr<ui_manager> m_ui;
 };
 
@@ -144,6 +265,11 @@ struct mp_instance
 		, rompath(config.rompath ? config.rompath : "")
 		, datapath(config.datapath ? config.datapath : "")
 	{
+		if (config.nvram && config.nvram_size)
+		{
+			u8 const *const data = static_cast<u8 const *>(config.nvram);
+			initial_nvram.assign(data, data + config.nvram_size);
+		}
 		if (config.options)
 		{
 			for (char const *const *opt = config.options; opt[0] && opt[1]; opt += 2)
@@ -152,6 +278,7 @@ struct mp_instance
 	}
 
 	void emulation_thread(std::promise<std::string> started);
+	void serve_nvram(running_machine &machine);
 	void stopped();
 	void notify_host();
 	void set_options(osd_options &options);
@@ -162,6 +289,7 @@ struct mp_instance
 	std::string const rompath;
 	std::string const datapath;
 	std::vector<std::pair<std::string, std::string> > extra_options;
+	std::vector<u8> initial_nvram;
 
 	std::thread thread;
 
@@ -184,6 +312,15 @@ struct mp_instance
 	std::uint64_t deficit = 0;
 
 	std::string log_copy;
+
+	// NVRAM snapshots requested by the host thread and taken by the
+	// emulation thread between time slices
+	std::atomic<bool> nvram_requested{ false };
+	std::mutex nvram_mutex;
+	std::condition_variable nvram_ready;
+	bool nvram_done = false;
+	std::vector<u8> nvram_snapshot;    // guarded by nvram_mutex
+	std::vector<u8> nvram_result;      // host thread
 };
 
 
@@ -210,6 +347,7 @@ void mp_instance::set_options(osd_options &options)
 	set(OPTION_THROTTLE, "0");
 	set(OPTION_SKIP_GAMEINFO, "1");
 	set(OPTION_SAMPLERATE, std::to_string(io.sample_rate));
+	set(OPTION_NVRAM_SAVE, "0");
 	if (!rompath.empty())
 		set(OPTION_MEDIAPATH, rompath);
 	if (!datapath.empty())
@@ -253,7 +391,7 @@ void mp_instance::emulation_thread(std::promise<std::string> started)
 		options.set_system_name(driver);
 		set_options(options);
 
-		plugin_machine_manager manager(options, osd);
+		plugin_machine_manager manager(options, osd, initial_nvram);
 		manager.start_http_server();
 
 		machine_config const config(system, options);
@@ -279,6 +417,8 @@ void mp_instance::emulation_thread(std::promise<std::string> started)
 		while (!quit.load(std::memory_order_acquire))
 		{
 			std::uint32_t const seen = wake.load(std::memory_order_acquire);
+			if (nvram_requested.exchange(false, std::memory_order_acq_rel))
+				serve_nvram(machine);
 			std::uint64_t const target_frame = played.load(std::memory_order_acquire) + latency;
 			attotime const target = attotime::from_ticks(target_frame, io.sample_rate);
 			if (machine.time() < target)
@@ -295,6 +435,8 @@ void mp_instance::emulation_thread(std::promise<std::string> started)
 			}
 		}
 
+		// keep the final NVRAM contents for the host
+		serve_nvram(machine);
 		stopped();
 		machine.run_stop();
 		manager.set_machine(nullptr);
@@ -312,11 +454,22 @@ void mp_instance::emulation_thread(std::promise<std::string> started)
 }
 
 
+void mp_instance::serve_nvram(running_machine &machine)
+{
+	std::vector<u8> snapshot = collect_nvram(machine);
+	std::lock_guard<std::mutex> lock(nvram_mutex);
+	nvram_snapshot = std::move(snapshot);
+	nvram_done = true;
+	nvram_ready.notify_all();
+}
+
 void mp_instance::stopped()
 {
 	running = false;
 	emulated.store(EMULATION_STOPPED, std::memory_order_release);
 	emulated.notify_one();
+	std::lock_guard<std::mutex> lock(nvram_mutex);
+	nvram_ready.notify_all();
 }
 
 void mp_instance::notify_host()
@@ -487,6 +640,36 @@ void mp_set_offline(mp_instance *instance, int offline)
 uint64_t mp_underruns(const mp_instance *instance)
 {
 	return instance->underruns.load(std::memory_order_relaxed);
+}
+
+const void *mp_nvram(mp_instance *instance, size_t *size)
+{
+	std::unique_lock<std::mutex> lock(instance->nvram_mutex);
+	if (instance->running.load(std::memory_order_acquire))
+	{
+		// ask the emulation thread for a snapshot and wait for it
+		instance->nvram_done = false;
+		instance->nvram_requested.store(true, std::memory_order_release);
+		instance->notify_host();
+		bool const done = instance->nvram_ready.wait_for(
+				lock,
+				std::chrono::seconds(2),
+				[instance] () { return instance->nvram_done || !instance->running.load(std::memory_order_acquire); });
+		if (!done)
+		{
+			// this runs on the host thread, which has no OSD output
+			instance->io.log(OSD_OUTPUT_CHANNEL_ERROR, "Timeout waiting for NVRAM snapshot\n");
+			return nullptr;
+		}
+	}
+
+	// after the machine stopped this is the final snapshot
+	instance->nvram_result = instance->nvram_snapshot;
+	lock.unlock();
+
+	if (size)
+		*size = instance->nvram_result.size();
+	return instance->nvram_result.empty() ? nullptr : instance->nvram_result.data();
 }
 
 const char *mp_log(mp_instance *instance)

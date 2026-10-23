@@ -8,7 +8,9 @@
  *
  * With MPCTEST_INSTANCES=n, n instances are created and rendered
  * concurrently on separate threads, writing <out>.<i>.wav and using
- * <datapath>.<i> as data directory.
+ * <datapath>.<i> as data directory.  With MPCTEST_NVRAM=1 the main
+ * thread repeatedly takes NVRAM snapshots while rendering, as a host
+ * saving its project would.
  *
  *   cc -O2 -o mpctest src/osd/plugin/test/mpctest.c -Isrc/osd/plugin -ldl -lpthread
  *   ./mpctest ./libmameplugin_synths.so tx81z roms out.wav [seconds] [datapath] [--realtime]
@@ -41,6 +43,7 @@ typedef void (*mp_process_fn)(mp_instance *, const mp_midi_event *, uint32_t, fl
 typedef void (*mp_set_offline_fn)(mp_instance *, int);
 typedef uint64_t (*mp_underruns_fn)(const mp_instance *);
 typedef const char *(*mp_log_fn)(mp_instance *);
+typedef const void *(*mp_nvram_fn)(mp_instance *, size_t *);
 
 static mp_build_version_fn p_mp_build_version;
 static mp_machine_count_fn p_mp_machine_count;
@@ -52,6 +55,7 @@ static mp_process_fn p_mp_process;
 static mp_set_offline_fn p_mp_set_offline;
 static mp_underruns_fn p_mp_underruns;
 static mp_log_fn p_mp_log;
+static mp_nvram_fn p_mp_nvram;
 
 /* call through the pointers resolved with dlsym */
 #define mp_build_version p_mp_build_version
@@ -64,6 +68,7 @@ static mp_log_fn p_mp_log;
 #define mp_set_offline p_mp_set_offline
 #define mp_underruns p_mp_underruns
 #define mp_log p_mp_log
+#define mp_nvram p_mp_nvram
 
 typedef struct job
 {
@@ -74,6 +79,7 @@ typedef struct job
 	double seconds;
 	int realtime;
 	int result;
+	volatile int finished;
 } job;
 
 static void put32(FILE *f, uint32_t v) { fputc(v & 0xff, f); fputc((v >> 8) & 0xff, f); fputc((v >> 16) & 0xff, f); fputc(v >> 24, f); }
@@ -161,6 +167,7 @@ static void *render(void *param)
 	}
 	fclose(wav);
 	j->result = 0;
+	__atomic_store_n(&j->finished, 1, __ATOMIC_RELEASE);
 	return NULL;
 }
 
@@ -204,6 +211,7 @@ int main(int argc, char **argv)
 	LOAD(mp_set_offline)
 	LOAD(mp_underruns)
 	LOAD(mp_log)
+	LOAD(mp_nvram)
 
 	printf("MAME %s, MIDI machines:", mp_build_version());
 	for (uint32_t i = 0; i < mp_machine_count(); i++)
@@ -252,6 +260,27 @@ int main(int argc, char **argv)
 	pthread_t threads[MAX_INSTANCES];
 	for (int i = 0; i < instances; i++)
 		pthread_create(&threads[i], NULL, render, &jobs[i]);
+
+	if (getenv("MPCTEST_NVRAM"))
+	{
+		unsigned snapshots = 0;
+		size_t last = 0;
+		for (int busy = 1; busy; )
+		{
+			busy = 0;
+			for (int i = 0; i < instances; i++)
+			{
+				if (__atomic_load_n(&jobs[i].finished, __ATOMIC_ACQUIRE))
+					continue;
+				busy = 1;
+				if (mp_nvram(jobs[i].inst, &last))
+					snapshots++;
+			}
+			struct timespec const delay = { 0, 20 * 1000 * 1000 };
+			nanosleep(&delay, NULL);
+		}
+		printf("nvram: %u snapshots, %zu bytes\n", snapshots, last);
+	}
 	int result = 0;
 	for (int i = 0; i < instances; i++)
 	{

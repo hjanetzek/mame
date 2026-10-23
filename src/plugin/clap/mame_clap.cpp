@@ -8,7 +8,9 @@
 //  The machine is selected with an enumerated parameter;
 //  changing it restarts the plugin.  ROM and data paths come
 //  from the environment or a configuration file, see
-//  load_settings().
+//  load_settings().  The plugin state holds the machine and its
+//  NVRAM (e.g. patch memory); NVRAM files in the data path only
+//  provide the initial contents for new instances.
 //
 //============================================================
 
@@ -24,6 +26,7 @@
 #include <fstream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 
 namespace {
@@ -191,7 +194,7 @@ private:
 	bool state_load(clap_istream_t const *stream);
 
 	void handle_param(clap_event_param_value_t const &event);
-	void select_machine(std::string_view name);
+	void update_nvram();
 	int machine_index(std::string_view name) const;
 	void log(clap_log_severity severity, std::string const &message) const;
 
@@ -211,6 +214,8 @@ private:
 	settings m_settings;
 	int m_default_machine = 0;
 	std::string m_machine;           // main thread
+	std::vector<uint8_t> m_nvram;    // main thread, last known NVRAM of m_nvram_machine
+	std::string m_nvram_machine;
 	std::atomic<int> m_requested{ -1 };  // machine index requested from any thread
 	bool m_offline = false;
 	mp_instance *m_instance = nullptr;
@@ -280,6 +285,11 @@ bool mame_clap::activate(double sample_rate, uint32_t min_frames, uint32_t max_f
 	config.datapath = datapath.c_str();
 	config.sample_rate = uint32_t(sample_rate);
 	config.max_block_frames = max_frames;
+	if ((m_nvram_machine == m_machine) && !m_nvram.empty())
+	{
+		config.nvram = m_nvram.data();
+		config.nvram_size = m_nvram.size();
+	}
 
 	char error[1024];
 	m_instance = mp_create(&config, error, sizeof(error));
@@ -302,9 +312,26 @@ void mame_clap::deactivate()
 {
 	if (m_instance)
 	{
+		// keep edits across restarts, e.g. for a sample rate change
+		update_nvram();
 		mp_destroy(m_instance);
 		m_instance = nullptr;
 	}
+}
+
+
+// fetch the running machine's NVRAM
+void mame_clap::update_nvram()
+{
+	size_t size = 0;
+	auto const *const data = static_cast<uint8_t const *>(mp_nvram(m_instance, &size));
+	if (data)
+	{
+		m_nvram.assign(data, data + size);
+		m_nvram_machine = m_machine;
+	}
+	if (char const *const messages = mp_log(m_instance))
+		log(CLAP_LOG_WARNING, "MAME: " + m_machine + ":\n" + messages);
 }
 
 
@@ -510,12 +537,29 @@ void mame_clap::params_flush(clap_input_events_t const *in, clap_output_events_t
 }
 
 
-// state is a list of key=value lines; currently only the machine
+// state: a header line, key=value lines and the NVRAM blob
+//   mame-plugin-state 1
+//   machine=<name>
+//   nvram=<size>
+//   <size bytes>
+constexpr std::string_view STATE_HEADER = "mame-plugin-state 1";
+
 bool mame_clap::state_save(clap_ostream_t const *stream)
 {
 	int const requested = m_requested.load();
 	std::string const machine = (requested >= 0) ? std::string(mp_machine_name(requested)) : m_machine;
-	std::string const data = "machine=" + machine + "\n";
+
+	// NVRAM belongs to a machine, a pending change to another one starts afresh
+	if (m_instance && (machine == m_machine))
+		update_nvram();
+	bool const with_nvram = (m_nvram_machine == machine) && !m_nvram.empty();
+
+	std::string data = std::string(STATE_HEADER) + "\nmachine=" + machine + "\n";
+	if (with_nvram)
+	{
+		data += "nvram=" + std::to_string(m_nvram.size()) + "\n";
+		data.append(reinterpret_cast<char const *>(m_nvram.data()), m_nvram.size());
+	}
 
 	char const *ptr = data.data();
 	std::size_t remaining = data.size();
@@ -542,23 +586,63 @@ bool mame_clap::state_load(clap_istream_t const *stream)
 		data.append(buffer, std::size_t(got));
 	}
 
-	// a state must name a machine available in this build
 	std::string machine;
+	std::vector<uint8_t> nvram;
 	std::string_view rest(data);
+	bool first = true;
 	while (!rest.empty())
 	{
 		auto const end = rest.find('\n');
 		std::string_view const line = rest.substr(0, end);
 		rest = (end == std::string_view::npos) ? std::string_view() : rest.substr(end + 1);
+		if (first && (line != STATE_HEADER))
+		{
+			log(CLAP_LOG_ERROR, "MAME: state is not in a known format");
+			return false;
+		}
+		first = false;
+
 		if (line.substr(0, 8) == "machine=")
+		{
 			machine = trim(line.substr(8));
+		}
+		else if (line.substr(0, 6) == "nvram=")
+		{
+			std::size_t const size = std::strtoull(std::string(line.substr(6)).c_str(), nullptr, 10);
+			if (size > rest.size())
+			{
+				log(CLAP_LOG_ERROR, "MAME: state is truncated");
+				return false;
+			}
+			nvram.assign(rest.begin(), rest.begin() + size);
+			rest = rest.substr(size);
+		}
 	}
-	if (machine_index(machine) < 0)
+
+	// a state must name a machine available in this build
+	int const index = machine_index(machine);
+	if (index < 0)
 	{
 		log(CLAP_LOG_ERROR, "MAME: state doesn't name a known machine");
 		return false;
 	}
-	select_machine(machine);
+
+	m_nvram = std::move(nvram);
+	m_nvram_machine = machine;
+
+	// a running machine is restarted, even if it is the same one, as NVRAM
+	// can only be applied at startup
+	if (m_instance)
+	{
+		m_requested = index;
+		m_host->request_restart(m_host);
+	}
+	else
+	{
+		m_requested = (index == machine_index(m_machine)) ? -1 : index;
+	}
+	if (m_host_params)
+		m_host_params->rescan(m_host, CLAP_PARAM_RESCAN_VALUES);
 	return true;
 }
 
@@ -576,29 +660,6 @@ void mame_clap::handle_param(clap_event_param_value_t const &event)
 	// the machine can only be replaced while inactive
 	m_requested = index;
 	m_host->request_restart(m_host);
-}
-
-
-void mame_clap::select_machine(std::string_view name)
-{
-	int const index = machine_index(name);
-	if (index < 0)
-	{
-		log(CLAP_LOG_ERROR, "MAME: unknown machine " + std::string(name));
-		return;
-	}
-	if (index == machine_index(m_machine))
-	{
-		// cancel a pending change
-		m_requested = -1;
-		return;
-	}
-
-	m_requested = index;
-	if (m_instance)
-		m_host->request_restart(m_host);
-	if (m_host_params)
-		m_host_params->rescan(m_host, CLAP_PARAM_RESCAN_VALUES);
 }
 
 

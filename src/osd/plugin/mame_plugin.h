@@ -12,6 +12,12 @@
  * events are delayed by the same amount so their timing relative to
  * the audio is preserved.  Hosts should report this latency for
  * delay compensation.
+ *
+ * NVRAM (e.g. a synthesizer's patch memory) is persisted by the host:
+ * mp_nvram() returns its current contents, which can be passed back in
+ * mp_config when the machine is created again.  NVRAM files in the data
+ * path are only read, as initial contents for machines created without
+ * NVRAM data, and never written.
  */
 #ifndef MAME_OSD_PLUGIN_MAME_PLUGIN_H
 #define MAME_OSD_PLUGIN_MAME_PLUGIN_H
@@ -29,7 +35,7 @@ extern "C" {
 #define MP_API __attribute__((visibility("default")))
 #endif
 
-#define MP_API_VERSION 1
+#define MP_API_VERSION 2
 
 typedef struct mp_instance mp_instance;
 
@@ -42,6 +48,8 @@ typedef struct mp_config
 	uint32_t max_block_frames;   /* largest frame count passed to mp_process */
 	uint32_t latency_frames;     /* look-ahead of the emulation, 0 selects a default */
 	const char *const *options;  /* NULL-terminated name/value pairs of extra MAME options, may be NULL */
+	const void *nvram;           /* NVRAM contents from mp_nvram() to start with, may be NULL */
+	size_t nvram_size;
 } mp_config;
 
 typedef struct mp_midi_event
@@ -79,6 +87,12 @@ MP_API void mp_set_offline(mp_instance *instance, int offline);
 /* number of frames that were output as silence because the emulation
    could not keep up */
 MP_API uint64_t mp_underruns(const mp_instance *instance);
+
+/* main thread: snapshot the NVRAM of all devices; returns NULL if the
+   machine has none or the snapshot failed.  The data stays valid until
+   the next call for this instance.  After the machine stopped, returns
+   the contents at the time it stopped. */
+MP_API const void *mp_nvram(mp_instance *instance, size_t *size);
 
 /* drain and return messages logged by the emulation (errors and
    warnings), or NULL if there are none; the pointer is valid until the
