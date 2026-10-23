@@ -901,6 +901,20 @@ if _OPTIONS["SHLIB"] then
 	}
 end
 
+if _OPTIONS["osd"]=="plugin" then
+	-- the plugin OSD links everything into a shared library and needs
+	-- synchronous, fine-grained sound updates to keep latency low
+	defines {
+		"SOUND_DISABLE_THREADING",
+		"MAME_SOUND_STREAMS_UPDATE_FREQUENCY=1000",
+	}
+	if _OPTIONS["targetos"]~="windows" then
+		buildoptions {
+			"-fPIC"
+		}
+	end
+end
+
 if _OPTIONS["SSE2"]=="1" then
 	buildoptions {
 		"-msse",
@@ -1416,7 +1430,7 @@ dofile(path.join("src", "devices.lua"))
 devicesProject(_OPTIONS["target"],_OPTIONS["subtarget"])
 
 if _OPTIONS["with-emulator"] then
-	if (STANDALONE~=true) then
+	if (STANDALONE~=true) and (_OPTIONS["osd"]~="plugin") then
 		dofile(path.join("src", "mame", "frontend.lua"))
 	end
 

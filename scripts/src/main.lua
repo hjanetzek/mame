@@ -20,9 +20,16 @@ if (_OPTIONS["SOURCES"] == nil) and (_OPTIONS["SOURCEFILTER"] == nil) then
 else
 	projname = _subtarget
 end
+	local plugin = _OPTIONS["osd"]=="plugin"
 	project (projname)
 	uuid (os.uuid(_target .. "_" .. _subtarget))
-	kind "ConsoleApp"
+	if plugin then
+		kind "SharedLib"
+		targetprefix "lib"
+		targetname ("mameplugin_" .. projname)
+	else
+		kind "ConsoleApp"
+	end
 
 	configuration { "android*" }
 		targetprefix "lib"
@@ -124,7 +131,7 @@ end
 if (STANDALONE~=true) then
 	findfunction("linkProjects_" .. _OPTIONS["target"] .. "_" .. _OPTIONS["subtarget"])(_OPTIONS["target"], _OPTIONS["subtarget"])
 end
-if (STANDALONE~=true) then
+if (STANDALONE~=true) and (not plugin) then
 	links {
 		"frontend",
 	}
@@ -136,9 +143,11 @@ end
 	links {
 		"osd_" .. _OPTIONS["osd"],
 	}
+if not plugin then
 	links {
 		"qtdbg_" .. _OPTIONS["osd"],
 	}
+end
 --if (STANDALONE~=true) then
 	links {
 		"formats",
@@ -169,7 +178,7 @@ if CPU_INCLUDE_DRC_NATIVE then
 		"asmjit",
 	}
 end
-if (STANDALONE~=true) then
+if (STANDALONE~=true) and (not plugin) then
 	links {
 		ext_lib("lua"),
 		"lualibs",
@@ -182,7 +191,7 @@ end
 		ext_lib("flac"),
 		ext_lib("utf8proc"),
 	}
-if (STANDALONE~=true) then
+if (STANDALONE~=true) and (not plugin) then
 	links {
 		ext_lib("sqlite3"),
 	}
@@ -285,6 +294,16 @@ if (STANDALONE~=true) then
 		GEN_DIR .. "version.cpp",
 		GEN_DIR .. _target .. "/" .. _subtarget .. "/drivlist.cpp",
 	}
+	if plugin then
+		-- the C API lives in the main project so the linker keeps it
+		files {
+			MAME_DIR .. "src/osd/plugin/pluginmain.cpp",
+		}
+		includedirs {
+			MAME_DIR .. "src/osd/plugin",
+			MAME_DIR .. "src/osd/modules/lib",
+		}
+	end
 
 	local driverlist = MAME_DIR .. "src/" .. _target .. "/" .. _target .. ".lst"
 	local driverssrc = GEN_DIR .. _target .. "/" .. _subtarget .. "/drivlist.cpp"

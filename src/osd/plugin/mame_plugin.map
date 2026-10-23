@@ -1,0 +1,6 @@
+{
+	global:
+		mp_*;
+	local:
+		*;
+};

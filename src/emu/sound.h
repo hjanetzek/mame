@@ -76,6 +76,12 @@
 #include <condition_variable>
 #endif
 
+// rate of the periodic sound update, which determines the granularity
+// in which samples are delivered to the OSD layer
+#ifndef MAME_SOUND_STREAMS_UPDATE_FREQUENCY
+#define MAME_SOUND_STREAMS_UPDATE_FREQUENCY 50
+#endif
+
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -123,7 +129,7 @@ public:
 		std::vector<channel_mapping> m_channel_mappings;
 	};
 
-	static constexpr int STREAMS_UPDATE_FREQUENCY = 50;
+	static constexpr int STREAMS_UPDATE_FREQUENCY = MAME_SOUND_STREAMS_UPDATE_FREQUENCY;
 
 	// construction/destruction
 	sound_manager(running_machine &machine);
