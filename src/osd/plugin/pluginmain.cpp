@@ -258,10 +258,14 @@ std::vector<machine_entry> const &midi_machines()
 
 constexpr std::uint64_t EMULATION_STOPPED = ~std::uint64_t(0);
 
+// largest look-ahead mp_set_latency() accepts; the audio queue holds that
+// plus some slack
+constexpr uint32_t MAX_LATENCY = 32768;
+
 struct mp_instance
 {
 	mp_instance(mp_config const &config, uint32_t latency)
-		: io(config.sample_rate, std::size_t(latency) * 4 + config.sample_rate / 10, 65536)
+		: io(config.sample_rate, std::size_t(MAX_LATENCY) + config.sample_rate / 10, 65536)
 		, latency(latency)
 		, driver(config.driver)
 		, rompath(config.rompath ? config.rompath : "")
@@ -286,7 +290,8 @@ struct mp_instance
 	void set_options(osd_options &options);
 
 	plugin_io io;
-	uint32_t const latency;
+	// look-ahead of the emulation, can change while running
+	std::atomic<uint32_t> latency;
 	std::string const driver;
 	std::string const rompath;
 	std::string const datapath;
@@ -425,7 +430,7 @@ void mp_instance::emulation_thread(std::promise<std::string> started)
 			std::uint32_t const seen = wake.load(std::memory_order_acquire);
 			if (nvram_requested.exchange(false, std::memory_order_acq_rel))
 				serve_nvram(machine);
-			std::uint64_t const target_frame = played.load(std::memory_order_acquire) + latency;
+			std::uint64_t const target_frame = played.load(std::memory_order_acquire) + latency.load(std::memory_order_relaxed);
 			attotime const target = attotime::from_ticks(target_frame, io.sample_rate);
 			if (machine.time() < target)
 			{
@@ -541,6 +546,7 @@ mp_instance *mp_create(const mp_config *config, char *error, size_t error_size)
 	uint32_t latency = config->latency_frames;
 	if (!latency)
 		latency = std::max<uint32_t>(config->max_block_frames, 64) + config->sample_rate * 3 / 1000;
+	latency = std::min(latency, MAX_LATENCY);
 
 	try
 	{
@@ -579,18 +585,29 @@ void mp_destroy(mp_instance *instance)
 
 uint32_t mp_latency(const mp_instance *instance)
 {
-	return instance->latency;
+	return instance->latency.load(std::memory_order_relaxed);
+}
+
+uint32_t mp_set_latency(mp_instance *instance, uint32_t frames)
+{
+	// output frame n is always emulated frame n, so the look-ahead only
+	// decides how far the emulation runs ahead and when MIDI is due
+	frames = std::min(frames, MAX_LATENCY);
+	instance->latency.store(frames, std::memory_order_relaxed);
+	instance->notify_host();
+	return frames;
 }
 
 void mp_process(mp_instance *instance, const mp_midi_event *events, uint32_t event_count, float *const *out, uint32_t frames)
 {
 	plugin_io &io = instance->io;
 	std::uint64_t const base = instance->played.load(std::memory_order_relaxed);
+	uint32_t const latency = instance->latency.load(std::memory_order_relaxed);
 
 	// MIDI is delayed by the look-ahead so it lines up with the audio
 	for (uint32_t i = 0; i < event_count; i++)
 	{
-		std::uint64_t const due = base + std::min(events[i].frame, frames) + instance->latency;
+		std::uint64_t const due = base + std::min(events[i].frame, frames) + latency;
 		for (uint32_t j = 0; j < events[i].size; j++)
 			io.midi.push(plugin_io::midi_byte{ due, events[i].data[j] });
 	}
@@ -600,7 +617,7 @@ void mp_process(mp_instance *instance, const mp_midi_event *events, uint32_t eve
 	// progress and therefore the output are deterministic
 	if (instance->offline.load(std::memory_order_relaxed))
 	{
-		std::uint64_t const needed = base + instance->latency;
+		std::uint64_t const needed = base + latency;
 		for (std::uint64_t reached = instance->emulated.load(std::memory_order_acquire); reached < needed; reached = instance->emulated.load(std::memory_order_acquire))
 			instance->emulated.wait(reached, std::memory_order_acquire);
 	}

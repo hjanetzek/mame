@@ -35,7 +35,7 @@ extern "C" {
 #define MP_API __attribute__((visibility("default")))
 #endif
 
-#define MP_API_VERSION 3
+#define MP_API_VERSION 4
 
 typedef struct mp_instance mp_instance;
 
@@ -73,8 +73,12 @@ MP_API const char *mp_machine_description(uint32_t index);
 MP_API mp_instance *mp_create(const mp_config *config, char *error, size_t error_size);
 MP_API void mp_destroy(mp_instance *instance);
 
-/* look-ahead in frames, constant for the lifetime of the instance */
+/* look-ahead in frames */
 MP_API uint32_t mp_latency(const mp_instance *instance);
+
+/* realtime: change the look-ahead, e.g. when the host's block size
+   changes; returns the latency in effect, which is limited to 32768 */
+MP_API uint32_t mp_set_latency(mp_instance *instance, uint32_t frames);
 
 /* realtime: queue the block's MIDI events (sorted by frame) and fill
    frames of stereo audio into out[0] and out[1] */

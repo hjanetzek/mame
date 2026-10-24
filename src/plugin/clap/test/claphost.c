@@ -12,6 +12,8 @@
  * CLAPHOST_STATE_OUT=file writes the final state to a file.
  * CLAPHOST_SYSEX="F0 .. F7" sends a SysEx message 9 seconds in; MIDI
  * the plugin outputs is summarised and SysEx printed.
+ * CLAPHOST_GENERIC=1 skips the checks of the MAME CLAP plugin's own
+ * parameter and state format, for other plugins running a MAME machine.
  *
  *   cc -O2 -o claphost src/plugin/clap/test/claphost.c -I3rdparty/clap/include -ldl
  *   ./claphost ./mame_synths.clap tx81z out.wav [seconds] [switch-to-machine]
@@ -256,8 +258,14 @@ int main(int argc, char **argv)
 	CHECK((note_ports->count(plugin, true) == 1) && note_ports->get(plugin, 0, true, &npi));
 	printf("ports: audio out '%s' (%u ch), note in '%s' (dialects %x)\n", api.name, api.channel_count, npi.name, npi.supported_dialects);
 
+	int const generic = getenv("CLAPHOST_GENERIC") != NULL;
+	printf("params: %u\n", params->count(plugin));
+
 	/* list the machine parameter */
 	clap_param_info_t pinfo;
+	memset(&pinfo, 0, sizeof(pinfo));
+	if (!generic)
+	{
 	CHECK((params->count(plugin) == 1) && params->get_info(plugin, 0, &pinfo));
 	printf("param '%s':", pinfo.name);
 	for (int v = (int)pinfo.min_value; v <= (int)pinfo.max_value; v++)
@@ -284,6 +292,18 @@ int main(int argc, char **argv)
 	}
 	clap_istream_t istream = { &sbuf, stream_read };
 	CHECK(state->load(plugin, &istream));
+	}
+	else if (getenv("CLAPHOST_STATE_IN"))
+	{
+		/* generic: restore a state saved by this host */
+		static buffer gbuf;
+		FILE *f = fopen(getenv("CLAPHOST_STATE_IN"), "rb");
+		CHECK(f);
+		gbuf.size = fread(gbuf.data, 1, sizeof(gbuf.data), f);
+		fclose(f);
+		clap_istream_t gstream = { &gbuf, stream_read };
+		CHECK(state->load(plugin, &gstream));
+	}
 
 	/* render offline */
 	CHECK(render_ext->set(plugin, CLAP_RENDER_OFFLINE));
@@ -325,10 +345,17 @@ int main(int argc, char **argv)
 	static buffer obuf;
 	clap_ostream_t ostream = { &obuf, stream_write };
 	CHECK(state->save(plugin, &ostream));
-	const char *nvram = strstr(obuf.data, "nvram=");
-	printf("state: %d bytes, %.*s\n", (int)obuf.size, (int)strcspn(obuf.data + 20, "\n"), obuf.data + 20);
-	if (nvram)
-		printf("state: %.*s\n", (int)strcspn(nvram, "\n"), nvram);
+	if (generic)
+	{
+		printf("state: %d bytes\n", (int)obuf.size);
+	}
+	else
+	{
+		const char *nvram = strstr(obuf.data, "nvram=");
+		printf("state: %d bytes, %.*s\n", (int)obuf.size, (int)strcspn(obuf.data + 20, "\n"), obuf.data + 20);
+		if (nvram)
+			printf("state: %.*s\n", (int)strcspn(nvram, "\n"), nvram);
+	}
 	const char *state_out = getenv("CLAPHOST_STATE_OUT");
 	if (state_out)
 	{
