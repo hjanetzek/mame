@@ -1518,10 +1518,56 @@ void z8_device::execute_run()
 			(this->*(Z8601_OPCODE_MAP[opcode].function))(opcode, &cycles);
 
 			m_icount -= cycles;
+
+			// PC trace ring buffer
+			m_pc_trace[m_pc_trace_idx] = m_ppc;
+			m_pc_trace_idx = (m_pc_trace_idx + 1) % PC_TRACE_SIZE;
+
+			// Trap: dump trace on illegal address
+			if (m_ppc == 0x00ff)
+				pc_trace_dump("PC hit $00FF");
+
+			// trace callback — fires after each instruction
+			if (m_trace_cb)
+				m_trace_cb(m_ppc, m_pc);
 		}
 	}
 	while (m_icount > 0);
 }
+
+void z8_device::pc_trace_dump(const char *reason)
+{
+	logerror("Z8 PC trace dump (%s) — last %d instructions:\n", reason, PC_TRACE_SIZE);
+	for (int i = 0; i < PC_TRACE_SIZE; i++)
+	{
+		int idx = (m_pc_trace_idx + i) % PC_TRACE_SIZE;
+		logerror("  [%c%2d] $%04X\n", (i == PC_TRACE_SIZE - 1) ? '>' : ' ', i, m_pc_trace[idx]);
+	}
+	reg_trace_dump();
+	abort();
+}
+
+void z8_device::reg_trace_record(uint8_t reg, uint8_t val)
+{
+	m_reg_trace[m_reg_trace_idx] = { m_ppc, reg, val };
+	m_reg_trace_idx = (m_reg_trace_idx + 1) % REG_TRACE_SIZE;
+}
+
+void z8_device::reg_trace_dump()
+{
+	logerror("Z8 R12/R13 write trace — last %d writes:\n", REG_TRACE_SIZE);
+	for (int i = 0; i < REG_TRACE_SIZE; i++)
+	{
+		int idx = (m_reg_trace_idx + i) % REG_TRACE_SIZE;
+		auto &e = m_reg_trace[idx];
+		if (e.pc == 0 && e.reg == 0 && e.val == 0)
+			continue;
+		logerror("  [%c%2d] PC=$%04X R%d=$%02X\n",
+			(i == REG_TRACE_SIZE - 1) ? '>' : ' ', i,
+			e.pc, (e.reg == 0x0c) ? 12 : 13, e.val);
+	}
+}
+
 
 /***************************************************************************
     RESET

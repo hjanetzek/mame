@@ -2116,3 +2116,14 @@ if SOUNDS["GT913"] then
 		MAME_DIR .. "src/devices/sound/gt913.h",
 	}
 end
+
+-- Wersi SLM-2 Voice Module
+--@src/devices/sound/wersi_slm2.h,SOUNDS["WERSI_SLM2_VOICE"] = true
+---------------------------------------------------
+
+if SOUNDS["WERSI_SLM2_VOICE"] then
+	files {
+		MAME_DIR .. "src/devices/sound/wersi_slm2.cpp",
+		MAME_DIR .. "src/devices/sound/wersi_slm2.h",
+	}
+end

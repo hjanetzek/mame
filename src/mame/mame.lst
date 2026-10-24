@@ -49565,6 +49565,12 @@ wmbulletf
 jupiter2
 jupiter3
 
+@source:wersi/ex20.cpp
+ex20
+
+@source:wersi/slm2test.cpp
+slm2test
+
 @source:westinghouse/testconsole.cpp
 whousetc
 
