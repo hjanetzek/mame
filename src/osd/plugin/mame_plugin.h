@@ -35,7 +35,7 @@ extern "C" {
 #define MP_API __attribute__((visibility("default")))
 #endif
 
-#define MP_API_VERSION 4
+#define MP_API_VERSION 5
 
 typedef struct mp_instance mp_instance;
 
@@ -104,6 +104,31 @@ MP_API uint64_t mp_underruns(const mp_instance *instance);
    the next call for this instance.  After the machine stopped, returns
    the contents at the time it stopped. */
 MP_API const void *mp_nvram(mp_instance *instance, size_t *size);
+
+/* front panel: the machine's layout (artwork, screens, LEDs and
+   clickable controls) as MAME draws it.  These calls may be made from
+   any thread but the realtime one; they take a lock shared with the
+   emulation thread.  The emulation thread prepares frames while the
+   host keeps calling mp_process, mp_panel_frame draws them on the
+   calling thread, which should always be the same one. */
+
+/* natural size of the layout in pixels */
+MP_API void mp_panel_size(mp_instance *instance, uint32_t *width, uint32_t *height);
+
+/* render at this size from now on, 0 stops rendering */
+MP_API void mp_panel_set_size(mp_instance *instance, uint32_t width, uint32_t height);
+
+/* draw the latest frame as R, G, B, A bytes (width * height * 4) if it
+   is newer than the one with the given serial and has the given size;
+   returns the serial of the drawn frame, or the passed serial if there
+   was nothing new */
+MP_API uint64_t mp_panel_frame(mp_instance *instance, void *pixels, uint32_t width, uint32_t height, uint64_t serial);
+
+/* pointer input in pixels of the size passed to mp_panel_set_size;
+   buttons has bit 0 set while the primary button is down.  Pointer ids
+   are below 64. */
+MP_API void mp_panel_pointer(mp_instance *instance, uint32_t id, int32_t x, int32_t y, uint32_t buttons);
+MP_API void mp_panel_pointer_leave(mp_instance *instance, uint32_t id);
 
 /* drain and return messages logged by the emulation (errors and
    warnings), or NULL if there are none; the pointer is valid until the

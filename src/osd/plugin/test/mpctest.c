@@ -12,6 +12,12 @@
  * thread repeatedly takes NVRAM snapshots while rendering, as a host
  * saving its project would.
  *
+ * With MPCTEST_PANEL=prefix the front panel is rendered at its natural
+ * size times MPCTEST_PANEL_SCALE (default 1) and written to
+ * <prefix>.<second>.ppm once per second.  MPCTEST_CLICK=x,y,t0,t1
+ * holds the primary button down at panel pixel x,y from t0 to t1
+ * seconds.
+ *
  *   cc -O2 -o mpctest src/osd/plugin/test/mpctest.c -Isrc/osd/plugin -ldl -lpthread
  *   ./mpctest ./libmameplugin_synths.so tx81z roms out.wav [seconds] [datapath] [--realtime]
  */
@@ -44,6 +50,10 @@ typedef void (*mp_set_offline_fn)(mp_instance *, int);
 typedef uint64_t (*mp_underruns_fn)(const mp_instance *);
 typedef const char *(*mp_log_fn)(mp_instance *);
 typedef const void *(*mp_nvram_fn)(mp_instance *, size_t *);
+typedef void (*mp_panel_size_fn)(mp_instance *, uint32_t *, uint32_t *);
+typedef void (*mp_panel_set_size_fn)(mp_instance *, uint32_t, uint32_t);
+typedef uint64_t (*mp_panel_frame_fn)(mp_instance *, void *, uint32_t, uint32_t, uint64_t);
+typedef void (*mp_panel_pointer_fn)(mp_instance *, uint32_t, int32_t, int32_t, uint32_t);
 
 static mp_build_version_fn p_mp_build_version;
 static mp_machine_count_fn p_mp_machine_count;
@@ -56,6 +66,10 @@ static mp_set_offline_fn p_mp_set_offline;
 static mp_underruns_fn p_mp_underruns;
 static mp_log_fn p_mp_log;
 static mp_nvram_fn p_mp_nvram;
+static mp_panel_size_fn p_mp_panel_size;
+static mp_panel_set_size_fn p_mp_panel_set_size;
+static mp_panel_frame_fn p_mp_panel_frame;
+static mp_panel_pointer_fn p_mp_panel_pointer;
 
 /* call through the pointers resolved with dlsym */
 #define mp_build_version p_mp_build_version
@@ -69,6 +83,10 @@ static mp_nvram_fn p_mp_nvram;
 #define mp_underruns p_mp_underruns
 #define mp_log p_mp_log
 #define mp_nvram p_mp_nvram
+#define mp_panel_size p_mp_panel_size
+#define mp_panel_set_size p_mp_panel_set_size
+#define mp_panel_frame p_mp_panel_frame
+#define mp_panel_pointer p_mp_panel_pointer
 
 typedef struct job
 {
@@ -80,6 +98,9 @@ typedef struct job
 	int realtime;
 	int result;
 	volatile int finished;
+	volatile uint32_t frames;   /* frames rendered so far */
+	const char *panel;
+	uint32_t pw, ph;
 } job;
 
 static void put32(FILE *f, uint32_t v) { fputc(v & 0xff, f); fputc((v >> 8) & 0xff, f); fputc((v >> 16) & 0xff, f); fputc(v >> 24, f); }
@@ -90,6 +111,45 @@ static int16_t to16(float v)
 	if (v > 1.0f) v = 1.0f;
 	if (v < -1.0f) v = -1.0f;
 	return (int16_t)(v * 32767.0f);
+}
+
+static void write_ppm(const char *prefix, int index, uint32_t second, const uint8_t *rgba, uint32_t width, uint32_t height)
+{
+	char path[1100];
+	snprintf(path, sizeof(path), "%s.%d.%u.ppm", prefix, index, second);
+	FILE *f = fopen(path, "wb");
+	if (!f)
+	{
+		perror(path);
+		return;
+	}
+	fprintf(f, "P6\n%u %u\n255\n", width, height);
+	for (uint32_t i = 0; i < width * height; i++)
+		fwrite(rgba + i * 4, 1, 3, f);
+	fclose(f);
+}
+
+/* draws the panel like a GUI would, writing a frame each second */
+static void *draw_panel(void *param)
+{
+	job *const j = (job *)param;
+	uint8_t *const pixels = calloc((size_t)j->pw * j->ph, 4);
+	uint64_t serial = 0;
+	uint32_t written = 0;
+	struct timespec pause = { 0, 16000000 };
+	while (!__atomic_load_n(&j->finished, __ATOMIC_ACQUIRE))
+	{
+		serial = mp_panel_frame(j->inst, pixels, j->pw, j->ph, serial);
+		uint32_t const second = __atomic_load_n(&j->frames, __ATOMIC_ACQUIRE) / RATE;
+		if (second != written)
+		{
+			write_ppm(j->panel, j->index, second, pixels, j->pw, j->ph);
+			written = second;
+		}
+		nanosleep(&pause, NULL);
+	}
+	free(pixels);
+	return NULL;
 }
 
 static void *render(void *param)
@@ -124,6 +184,25 @@ static void *render(void *param)
 	struct timespec next;
 	clock_gettime(CLOCK_MONOTONIC, &next);
 
+	j->panel = getenv("MPCTEST_PANEL");
+	pthread_t panel_thread;
+	double click[4] = { -1, -1, -1, -1 };
+	uint32_t buttons = 0;
+	if (j->panel)
+	{
+		const char *scaleenv = getenv("MPCTEST_PANEL_SCALE");
+		uint32_t const scale = scaleenv ? (uint32_t)atoi(scaleenv) : 1;
+		mp_panel_size(inst, &j->pw, &j->ph);
+		j->pw *= scale;
+		j->ph *= scale;
+		fprintf(stderr, "[%d] panel %ux%u\n", j->index, j->pw, j->ph);
+		mp_panel_set_size(inst, j->pw, j->ph);
+		const char *clickenv = getenv("MPCTEST_CLICK");
+		if (clickenv)
+			sscanf(clickenv, "%lf,%lf,%lf,%lf", &click[0], &click[1], &click[2], &click[3]);
+		pthread_create(&panel_thread, NULL, draw_panel, j);
+	}
+
 	for (uint32_t b = 0; b < blocks; b++)
 	{
 		uint32_t const start = b * BLOCK;
@@ -148,6 +227,18 @@ static void *render(void *param)
 
 		mp_process(inst, events, count, out, BLOCK);
 
+		__atomic_store_n(&j->frames, start + BLOCK, __ATOMIC_RELEASE);
+		if (j->panel)
+		{
+			double const t = (double)start / RATE;
+			uint32_t const down = (click[2] >= 0) && (t >= click[2]) && (t < click[3]);
+			if (down != buttons)
+			{
+				mp_panel_pointer(inst, 0, (int32_t)click[0], (int32_t)click[1], down);
+				buttons = down;
+			}
+		}
+
 		for (uint32_t i = 0; i < BLOCK; i++)
 		{
 			put16(wav, (uint16_t)to16(left[i]));
@@ -168,6 +259,8 @@ static void *render(void *param)
 	fclose(wav);
 	j->result = 0;
 	__atomic_store_n(&j->finished, 1, __ATOMIC_RELEASE);
+	if (j->panel)
+		pthread_join(panel_thread, NULL);
 	return NULL;
 }
 
@@ -212,6 +305,10 @@ int main(int argc, char **argv)
 	LOAD(mp_underruns)
 	LOAD(mp_log)
 	LOAD(mp_nvram)
+	LOAD(mp_panel_size)
+	LOAD(mp_panel_set_size)
+	LOAD(mp_panel_frame)
+	LOAD(mp_panel_pointer)
 
 	printf("MAME %s, MIDI machines:", mp_build_version());
 	for (uint32_t i = 0; i < mp_machine_count(); i++)

@@ -15,15 +15,30 @@
 #include "interface/midiport.h"
 
 #include "render.h"
+#include "rendersw.hxx"
+#include "rendlay.h"
 
 #include "strformat.h"
 
 #include <algorithm>
+#include <bit>
+#include <type_traits>
 #include <vector>
 #include <cstdio>
 
 
 namespace {
+
+// the panel renderer writes R, G, B, A bytes
+using panel_renderer = std::conditional_t<
+		std::endian::native == std::endian::little,
+		software_renderer<u32, 0,0,0, 0,8,16>,
+		software_renderer<u32, 0,0,0, 24,16,8> >;
+constexpr u32 PANEL_ALPHA = (std::endian::native == std::endian::little) ? 0xff000000 : 0x000000ff;
+
+// most frames the panel is rendered per second
+constexpr int PANEL_MAX_FPS = 60;
+
 
 // stereo sink node presented to the sound manager
 constexpr uint32_t PLUGIN_NODE_ID = 1;
@@ -118,6 +133,47 @@ void plugin_io::log(osd_output_channel channel, std::string const &text)
 
 
 //============================================================
+//  plugin_panel
+//============================================================
+
+std::uint64_t plugin_panel::draw(void *pixels, std::uint32_t width, std::uint32_t height, std::uint64_t last)
+{
+	std::unique_lock<std::mutex> lock(mutex);
+	std::uint64_t const current = serial;
+	if (!list || (current == last) || (list_width != width) || (list_height != height))
+		return last;
+	render_primitive_list &primitives = *list;
+	std::unique_lock<std::mutex> drawing(draw_mutex);
+	lock.unlock();
+
+	// the list keeps the textures it uses alive, but the screens keep
+	// updating their bitmaps, so a frame drawn late may show parts of a
+	// newer one
+	u32 *const dest = reinterpret_cast<u32 *>(pixels);
+	std::fill_n(dest, std::size_t(width) * height, 0);
+	primitives.acquire_lock();
+	panel_renderer::draw_primitives(primitives, dest, width, height, width);
+	primitives.release_lock();
+	for (std::size_t i = 0; i < std::size_t(width) * height; i++)
+		dest[i] |= PANEL_ALPHA;
+
+	drawing.unlock();
+	lock.lock();
+	fetched = current;
+	return current;
+}
+
+void plugin_panel::detach()
+{
+	{
+		std::lock_guard<std::mutex> lock(mutex);
+		list = nullptr;
+	}
+	std::lock_guard<std::mutex> drawing(draw_mutex);
+}
+
+
+//============================================================
 //  plugin_osd_interface
 //============================================================
 
@@ -136,10 +192,96 @@ void plugin_osd_interface::init(running_machine &machine)
 	osd_common_t::init(machine);
 	osd_common_t::init_subsystems();
 
-	// there are no windows, but the core expects a UI target; it can
-	// later be used to render the machine's layout into a plugin GUI
-	render_target *const target = machine.render().target_alloc();
-	machine.render().set_ui_target(*target);
+	// there are no windows, but the core expects a UI target; it renders
+	// the machine's layout for the plugin GUI
+	m_target = machine.render().target_alloc();
+	machine.render().set_ui_target(*m_target);
+
+	// natural size: the view's aspect at no less than one pixel per
+	// screen pixel
+	s32 min_width, min_height;
+	m_target->compute_minimum_size(min_width, min_height);
+	float const aspect = m_target->current_view().effective_aspect();
+	s32 width = s32(min_height * aspect + 0.5f);
+	s32 height = min_height;
+	if (width < min_width)
+	{
+		width = min_width;
+		height = s32(min_width / aspect + 0.5f);
+	}
+
+	std::lock_guard<std::mutex> lock(m_io.panel.mutex);
+	m_io.panel.natural_width = std::max(width, 1);
+	m_io.panel.natural_height = std::max(height, 1);
+}
+
+void plugin_osd_interface::update(bool skip_redraw)
+{
+	osd_common_t::update(skip_redraw);
+	update_panel();
+}
+
+void plugin_osd_interface::update_panel()
+{
+	plugin_panel &panel = m_io.panel;
+	u32 width, height;
+	bool consumed;
+	{
+		std::lock_guard<std::mutex> lock(panel.mutex);
+		width = panel.width;
+		height = panel.height;
+		consumed = panel.fetched == panel.serial;
+		m_pointer_events.swap(panel.pointers);
+		panel.pointers.clear();
+	}
+
+	if (!width || !height)
+		return;
+
+	bool const resized = (s32(width) != m_target->width()) || (s32(height) != m_target->height());
+	if (resized)
+		m_target->set_bounds(width, height);
+
+	// clicks on the layout's controls
+	if (!m_pointer_events.empty())
+	{
+		for (plugin_panel::pointer_event const &event : m_pointer_events)
+		{
+			if (m_pointer_buttons.size() <= event.id)
+				m_pointer_buttons.resize(event.id + 1, 0);
+			u32 const previous = m_pointer_buttons[event.id];
+			if (event.leave)
+			{
+				m_target->pointer_left(osd::ui_event_handler::pointer::MOUSE, event.id, 0, event.x, event.y, previous, 0);
+				m_pointer_buttons[event.id] = 0;
+			}
+			else
+			{
+				u32 const pressed = event.buttons & ~previous;
+				u32 const released = previous & ~event.buttons;
+				m_target->pointer_updated(osd::ui_event_handler::pointer::MOUSE, event.id, 0, event.x, event.y, event.buttons, pressed, released, BIT(pressed, 0) ? 1 : 0);
+				m_pointer_buttons[event.id] = event.buttons;
+			}
+		}
+		m_target->update_pointer_fields();
+		m_pointer_events.clear();
+	}
+
+	// build a new list when the GUI drew the last one, at a limited rate;
+	// the target alternates between two lists, so the one rebuilt here is
+	// never the one the GUI may still be drawing
+	osd_ticks_t const now = osd_ticks();
+	if (!resized && (!consumed || ((now - m_panel_last) < (osd_ticks_per_second() / PANEL_MAX_FPS))))
+		return;
+	m_panel_last = now;
+
+	render_primitive_list &list = m_target->get_primitives();
+
+	std::lock_guard<std::mutex> lock(panel.mutex);
+	panel.list = &list;
+	panel.list_width = width;
+	panel.list_height = height;
+	panel.serial++;
 }
 
 osd::audio_info plugin_osd_interface::sound_get_information()

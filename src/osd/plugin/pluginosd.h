@@ -19,10 +19,58 @@
 #include <cstdint>
 #include <mutex>
 #include <string>
+#include <vector>
 
 
 // name of the MIDI port fed by the host
 #define PLUGIN_MIDI_PORT_NAME "plugin"
+
+
+class render_primitive_list;
+
+
+// the machine's layout rendered for a plugin GUI: the emulation thread
+// builds primitive lists, the GUI thread rasterizes them, holding the
+// list's lock (as the core expects from renderers on other threads)
+struct plugin_panel
+{
+	struct pointer_event
+	{
+		std::uint32_t id;
+		std::int32_t x, y;       // pixels of the requested size
+		std::uint32_t buttons;   // bit 0 is the primary button
+		bool leave;
+	};
+
+	static constexpr std::size_t MAX_POINTER_EVENTS = 256;
+
+	// GUI thread: rasterize the latest list as RGBA bytes if it is newer
+	// than serial and has the given size; returns the serial drawn
+	std::uint64_t draw(void *pixels, std::uint32_t width, std::uint32_t height, std::uint64_t serial);
+
+	// emulation thread: stop handing out lists before the render
+	// manager goes away, waiting for a draw in progress
+	void detach();
+
+	std::mutex mutex;
+	std::mutex draw_mutex;   // held while drawing, taken while holding mutex
+
+	// natural size of the layout's current view
+	std::uint32_t natural_width = 0;
+	std::uint32_t natural_height = 0;
+
+	// set by the GUI, a size of 0 stops rendering
+	std::uint32_t width = 0;
+	std::uint32_t height = 0;
+	std::vector<pointer_event> pointers;
+
+	// latest list built by the emulation thread
+	render_primitive_list *list = nullptr;
+	std::uint32_t list_width = 0;
+	std::uint32_t list_height = 0;
+	std::uint64_t serial = 0;
+	std::uint64_t fetched = 0;   // serial of the list the GUI last drew
+};
 
 
 // state shared between the host-facing API and the OSD
@@ -59,6 +107,8 @@ struct plugin_io
 
 	std::mutex log_mutex;
 	std::string log_text;
+
+	plugin_panel panel;
 };
 
 
@@ -70,6 +120,7 @@ public:
 
 	// general overridables
 	virtual void init(running_machine &machine) override;
+	virtual void update(bool skip_redraw) override;
 	virtual void input_update(bool relative_reset) override { }
 	virtual void check_osd_inputs() override { }
 
@@ -100,8 +151,16 @@ public:
 	virtual bool has_focus() const override { return false; }
 
 private:
+	void update_panel();
+
 	plugin_io &m_io;
 	float m_convert[2048];
+
+	// panel rendering, emulation thread
+	render_target *m_target = nullptr;
+	std::vector<plugin_panel::pointer_event> m_pointer_events;
+	std::vector<std::uint32_t> m_pointer_buttons;
+	osd_ticks_t m_panel_last = 0;
 };
 
 #endif // MAME_OSD_PLUGIN_PLUGINOSD_H

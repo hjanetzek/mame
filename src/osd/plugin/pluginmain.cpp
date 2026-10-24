@@ -414,8 +414,16 @@ void mp_instance::emulation_thread(std::promise<std::string> started)
 		running_machine machine(config, manager);
 		manager.set_machine(&machine);
 
+		// the GUI must not draw lists of a machine that is gone
+		struct panel_guard
+		{
+			plugin_panel &panel;
+			~panel_guard() { panel.detach(); }
+		} const guard{ io.panel };
+
 		if (!machine.run_start(true))
 		{
+			io.panel.detach();
 			machine.run_stop();
 			manager.set_machine(nullptr);
 			return fail(std::string());
@@ -449,6 +457,7 @@ void mp_instance::emulation_thread(std::promise<std::string> started)
 		// keep the final NVRAM contents for the host
 		serve_nvram(machine);
 		stopped();
+		io.panel.detach();
 		machine.run_stop();
 		manager.set_machine(nullptr);
 	}
@@ -717,6 +726,62 @@ const char *mp_log(mp_instance *instance)
 	instance->log_copy = std::move(instance->io.log_text);
 	instance->io.log_text.clear();
 	return instance->log_copy.c_str();
+}
+
+void mp_panel_size(mp_instance *instance, uint32_t *width, uint32_t *height)
+{
+	plugin_panel &panel = instance->io.panel;
+	std::lock_guard<std::mutex> lock(panel.mutex);
+	if (width)
+		*width = panel.natural_width;
+	if (height)
+		*height = panel.natural_height;
+}
+
+void mp_panel_set_size(mp_instance *instance, uint32_t width, uint32_t height)
+{
+	plugin_panel &panel = instance->io.panel;
+	std::lock_guard<std::mutex> lock(panel.mutex);
+	if (!width || !height || (width > 8192) || (height > 8192))
+		width = height = 0;
+	panel.width = width;
+	panel.height = height;
+}
+
+uint64_t mp_panel_frame(mp_instance *instance, void *pixels, uint32_t width, uint32_t height, uint64_t serial)
+{
+	return instance->io.panel.draw(pixels, width, height, serial);
+}
+
+static void push_pointer(mp_instance *instance, plugin_panel::pointer_event const &event)
+{
+	if (event.id >= 64)
+		return;
+	plugin_panel &panel = instance->io.panel;
+	std::lock_guard<std::mutex> lock(panel.mutex);
+
+	// a move replaces the previous one if no buttons changed in between
+	if (!event.leave && !panel.pointers.empty())
+	{
+		plugin_panel::pointer_event &last = panel.pointers.back();
+		if (!last.leave && (last.id == event.id) && (last.buttons == event.buttons))
+		{
+			last = event;
+			return;
+		}
+	}
+	if (panel.pointers.size() < plugin_panel::MAX_POINTER_EVENTS)
+		panel.pointers.push_back(event);
+}
+
+void mp_panel_pointer(mp_instance *instance, uint32_t id, int32_t x, int32_t y, uint32_t buttons)
+{
+	push_pointer(instance, plugin_panel::pointer_event{ id, x, y, buttons, false });
+}
+
+void mp_panel_pointer_leave(mp_instance *instance, uint32_t id)
+{
+	push_pointer(instance, plugin_panel::pointer_event{ id, -1, -1, 0, true });
 }
 
 } // extern "C"
