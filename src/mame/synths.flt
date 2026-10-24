@@ -4,3 +4,4 @@ yamaha/ymdx100.cpp
 yamaha/ymmu50.cpp
 ensoniq/esq1.cpp
 korg/poly800.cpp
+wersi/ex20.cpp
