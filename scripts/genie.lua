@@ -1452,6 +1452,10 @@ if _OPTIONS["with-emulator"] then
 	end
 	mainProject(_OPTIONS["target"],_OPTIONS["subtarget"])
 	strip()
+
+	if _OPTIONS["osd"]=="plugin" then
+		pluginClapProject(_OPTIONS["target"],_OPTIONS["subtarget"])
+	end
 end
 
 if _OPTIONS["with-tools"] then

@@ -24,11 +24,11 @@ end
 	project (projname)
 	uuid (os.uuid(_target .. "_" .. _subtarget))
 	if plugin then
-		-- a CLAP plugin that also exports the mp_* C API
+		-- shared library exporting the mp_* C API, see pluginClapProject()
+		-- for the CLAP plugin built on top of it
 		kind "SharedLib"
-		targetprefix ""
+		targetprefix "lib"
 		targetname ("mame_" .. projname)
-		targetextension ".clap"
 	else
 		kind "ConsoleApp"
 	end
@@ -299,16 +299,13 @@ if (STANDALONE~=true) then
 		GEN_DIR .. _target .. "/" .. _subtarget .. "/drivlist.cpp",
 	}
 	if plugin then
-		-- the C API and plugin entry live in the main project so the
-		-- linker keeps them
+		-- the C API lives in the main project so the linker keeps it
 		files {
 			MAME_DIR .. "src/osd/plugin/pluginmain.cpp",
-			MAME_DIR .. "src/plugin/clap/mame_clap.cpp",
 		}
 		includedirs {
 			MAME_DIR .. "src/osd/plugin",
 			MAME_DIR .. "src/osd/modules/lib",
-			MAME_DIR .. "3rdparty/clap/include",
 		}
 	end
 

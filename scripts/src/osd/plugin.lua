@@ -33,6 +33,15 @@ elseif _OPTIONS["targetos"]=="macosx" then
 end
 
 
+-- name of the main project, the mp_* library is lib<"mame_" .. name>
+function pluginLibName(_target, _subtarget)
+	if (_OPTIONS["SOURCES"] == nil) and (_OPTIONS["SOURCEFILTER"] == nil) then
+		return (_target == _subtarget) and _target or (_target .. _subtarget)
+	end
+	return _subtarget
+end
+
+
 function maintargetosdoptions(_target,_subtarget)
 	osdmodulestargetconf()
 
@@ -48,6 +57,7 @@ function maintargetosdoptions(_target,_subtarget)
 		-- export only the mp_* C API from the shared library
 		linkoptions {
 			"-Wl,--version-script=" .. MAME_DIR .. "src/osd/plugin/mame_plugin.map",
+			"-Wl,-soname,libmame_" .. pluginLibName(_target, _subtarget) .. ".so",
 		}
 		-- report unresolved symbols at link time; sanitizer runtimes are
 		-- provided by the host executable, so allow them to stay undefined
@@ -66,6 +76,46 @@ function maintargetosdoptions(_target,_subtarget)
 			"psapi",
 			"ole32",
 			"winmm",
+		}
+	end
+end
+
+
+-- the CLAP plugin, a thin wrapper linked against the mp_* library
+function pluginClapProject(_target, _subtarget)
+	local libname = pluginLibName(_target, _subtarget)
+
+	project (libname .. "_clap")
+	uuid (os.uuid(_target .. "_" .. _subtarget .. "_clap"))
+	kind "SharedLib"
+	targetdir(MAME_DIR)
+	targetprefix ""
+	targetname ("mame_" .. libname)
+	targetextension ".clap"
+
+	addprojectflags()
+
+	files {
+		MAME_DIR .. "src/plugin/clap/mame_clap.cpp",
+	}
+	includedirs {
+		MAME_DIR .. "src/osd/plugin",
+		MAME_DIR .. "3rdparty/clap/include",
+	}
+	links {
+		libname,
+	}
+
+	if _OPTIONS["targetos"]=="linux" then
+		-- find the library next to the plugin, export only the CLAP entry
+		linkoptions {
+			"-Wl,-rpath,'$$ORIGIN'",
+			"-Wl,--version-script=" .. MAME_DIR .. "src/plugin/clap/mame_clap.map",
+		}
+	elseif _OPTIONS["targetos"]=="macosx" then
+		linkoptions {
+			"-Wl,-rpath,@loader_path",
+			"-Wl,-exported_symbols_list," .. MAME_DIR .. "src/plugin/clap/mame_clap.exp",
 		}
 	end
 end
