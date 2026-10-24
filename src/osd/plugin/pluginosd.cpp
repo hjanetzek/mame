@@ -36,6 +36,9 @@ using panel_renderer = std::conditional_t<
 		software_renderer<u32, 0,0,0, 24,16,8> >;
 constexpr u32 PANEL_ALPHA = (std::endian::native == std::endian::little) ? 0xff000000 : 0x000000ff;
 
+// shortest time a button state is held, in emulated time
+attotime const PANEL_MIN_HOLD = attotime::from_msec(50);
+
 // most frames the panel is rendered per second
 constexpr int PANEL_MAX_FPS = 60;
 
@@ -231,41 +234,60 @@ void plugin_osd_interface::update_panel()
 		width = panel.width;
 		height = panel.height;
 		consumed = panel.fetched == panel.serial;
-		m_pointer_events.swap(panel.pointers);
+		m_pointer_events.insert(m_pointer_events.end(), panel.pointers.begin(), panel.pointers.end());
 		panel.pointers.clear();
 	}
 
 	if (!width || !height)
+	{
+		m_pointer_events.clear();
 		return;
+	}
+	while (m_pointer_events.size() > plugin_panel::MAX_POINTER_EVENTS)
+		m_pointer_events.pop_front();
 
 	bool const resized = (s32(width) != m_target->width()) || (s32(height) != m_target->height());
 	if (resized)
 		m_target->set_bounds(width, height);
 
-	// clicks on the layout's controls
-	if (!m_pointer_events.empty())
+	// clicks on the layout's controls; the inputs are only looked at once
+	// a frame and machines scan them even less often, so each button state
+	// is held for a while before the next change is applied
+	bool updated = false;
+	attotime const now_emulated = machine().time();
+	while (!m_pointer_events.empty())
 	{
-		for (plugin_panel::pointer_event const &event : m_pointer_events)
+		plugin_panel::pointer_event const &event = m_pointer_events.front();
+		if (m_pointer_buttons.size() <= event.id)
 		{
-			if (m_pointer_buttons.size() <= event.id)
-				m_pointer_buttons.resize(event.id + 1, 0);
-			u32 const previous = m_pointer_buttons[event.id];
-			if (event.leave)
-			{
-				m_target->pointer_left(osd::ui_event_handler::pointer::MOUSE, event.id, 0, event.x, event.y, previous, 0);
-				m_pointer_buttons[event.id] = 0;
-			}
-			else
-			{
-				u32 const pressed = event.buttons & ~previous;
-				u32 const released = previous & ~event.buttons;
-				m_target->pointer_updated(osd::ui_event_handler::pointer::MOUSE, event.id, 0, event.x, event.y, event.buttons, pressed, released, BIT(pressed, 0) ? 1 : 0);
-				m_pointer_buttons[event.id] = event.buttons;
-			}
+			m_pointer_buttons.resize(event.id + 1, 0);
+			m_pointer_changed.resize(event.id + 1, attotime::zero);
 		}
-		m_target->update_pointer_fields();
-		m_pointer_events.clear();
+		u32 const previous = m_pointer_buttons[event.id];
+		u32 const buttons = event.leave ? 0 : event.buttons;
+		if (buttons != previous)
+		{
+			if ((now_emulated - m_pointer_changed[event.id]) < PANEL_MIN_HOLD)
+				break;
+			m_pointer_changed[event.id] = now_emulated;
+		}
+
+		if (event.leave)
+		{
+			m_target->pointer_left(osd::ui_event_handler::pointer::MOUSE, event.id, 0, event.x, event.y, previous, 0);
+		}
+		else
+		{
+			u32 const pressed = buttons & ~previous;
+			u32 const released = previous & ~buttons;
+			m_target->pointer_updated(osd::ui_event_handler::pointer::MOUSE, event.id, 0, event.x, event.y, buttons, pressed, released, BIT(pressed, 0) ? 1 : 0);
+		}
+		m_pointer_buttons[event.id] = buttons;
+		m_pointer_events.pop_front();
+		updated = true;
 	}
+	if (updated)
+		m_target->update_pointer_fields();
 
 	// build a new list when the GUI drew the last one, at a limited rate;
 	// the target alternates between two lists, so the one rebuilt here is

@@ -17,6 +17,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <deque>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -158,8 +159,9 @@ private:
 
 	// panel rendering, emulation thread
 	render_target *m_target = nullptr;
-	std::vector<plugin_panel::pointer_event> m_pointer_events;
+	std::deque<plugin_panel::pointer_event> m_pointer_events;
 	std::vector<std::uint32_t> m_pointer_buttons;
+	std::vector<attotime> m_pointer_changed;   // last button change per pointer
 	osd_ticks_t m_panel_last = 0;
 };
 
