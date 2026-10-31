@@ -59,7 +59,8 @@ std::string env_or(char const *name, std::string fallback)
 
 // MAME_PLUGIN_ROMPATH, MAME_PLUGIN_DATAPATH and MAME_PLUGIN_MACHINE override
 // the rompath, datapath and machine entries of mame-plugin.ini in the
-// configuration directory
+// configuration directory. ROMs are looked for in <datapath>/<machine>/roms
+// first, rompath adds further directories
 settings load_settings()
 {
 #if defined(_WIN32)
@@ -79,7 +80,6 @@ settings load_settings()
 
 	settings result;
 	result.datapath = data_dir;
-	result.rompath = data_dir + sep + "roms";
 
 	std::ifstream file(config_dir + sep + "mame-plugin.ini");
 	std::string line;
@@ -284,9 +284,12 @@ bool mame_clap::activate(double sample_rate, uint32_t min_frames, uint32_t max_f
 		m_machine = mp_machine_name(requested);
 
 	std::string const datapath = m_settings.datapath + "/" + m_machine;
+	std::string rompath = datapath + "/roms";
+	if (!m_settings.rompath.empty())
+		rompath += ";" + m_settings.rompath;
 	mp_config config = {};
 	config.driver = m_machine.c_str();
-	config.rompath = m_settings.rompath.c_str();
+	config.rompath = rompath.c_str();
 	config.datapath = datapath.c_str();
 	config.sample_rate = uint32_t(sample_rate);
 	config.max_block_frames = max_frames;
