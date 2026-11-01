@@ -226,6 +226,11 @@ MP_API int mp_layout_element_image(mp_instance *instance, uint32_t element, uint
    its size either way.  Returns its serial, or the passed one. */
 MP_API uint64_t mp_layout_screen(mp_instance *instance, uint32_t screen, uint64_t serial, uint32_t *width, uint32_t *height, void *rgba, size_t size);
 
+/* presses or releases the input of a clickable item of the description
+   with the given serial (ignored for another one); each state is held for
+   at least 50 ms of emulated time */
+MP_API void mp_layout_input(mp_instance *instance, uint64_t layout_serial, uint32_t item, int pressed);
+
 /* drain and return messages logged by the emulation (errors and
    warnings), or NULL if there are none; the pointer is valid until the
    next call for this instance */

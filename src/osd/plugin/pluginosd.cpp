@@ -428,8 +428,10 @@ void plugin_osd_interface::capture_layout()
 		m_layout_states.clear();
 		m_layout_screen_images.assign(m_layout_screen_ptrs.size(), std::vector<u8>());
 
+		release_layout_inputs();
+		m_layout_serial = ++m_layout_counter;
 		std::lock_guard<std::mutex> lock(panel.mutex);
-		panel.layout_serial = ++m_layout_counter;
+		panel.layout_serial = m_layout_serial;
 		panel.layout_aspect = view.effective_aspect();
 		panel.layout_elements = std::move(element_descs);
 		panel.layout_element_ptrs = std::move(elements);
@@ -499,6 +501,37 @@ void plugin_osd_interface::capture_layout()
 	}
 }
 
+void plugin_osd_interface::layout_input(plugin_panel::layout_input_event const &event)
+{
+	if ((event.serial != m_layout_serial) || (event.item >= m_layout_item_ptrs.size()))
+		return;
+	auto const [port, mask] = m_layout_item_ptrs[event.item]->input_tag_and_mask();
+	ioport_field *const field = (port && mask) ? port->field(mask) : nullptr;
+	if (!field)
+		return;
+
+	auto found = std::find_if(m_layout_inputs.begin(), m_layout_inputs.end(), [field] (note_input const &input) { return input.field == field; });
+	if (found == m_layout_inputs.end())
+	{
+		m_layout_inputs.push_back(note_input{ field });
+		found = m_layout_inputs.end() - 1;
+	}
+	bool const last = found->pending.empty() ? found->pressed : found->pending.back();
+	if (event.pressed != last)
+		found->pending.push_back(event.pressed);
+}
+
+void plugin_osd_interface::release_layout_inputs()
+{
+	// the items of another description may not reach them anymore
+	for (note_input &input : m_layout_inputs)
+	{
+		if (input.pressed)
+			input.field->clear_value();
+	}
+	m_layout_inputs.clear();
+}
+
 void plugin_osd_interface::reload_layout()
 {
 	// the GUI must not draw a list or an element of the target that goes
@@ -512,6 +545,7 @@ void plugin_osd_interface::reload_layout()
 	m_layout_view = nullptr;
 	m_layout_item_ptrs.clear();
 	m_layout_screen_ptrs.clear();
+	release_layout_inputs();
 
 	m_layout_controls.detach();
 	m_layout_controls_attached = false;
@@ -660,8 +694,19 @@ void plugin_osd_interface::update_panel()
 		height = panel.height;
 		consumed = panel.fetched == panel.serial;
 		layout_requested = panel.layout_requested;
+		m_layout_input_events.insert(m_layout_input_events.end(), panel.layout_inputs.begin(), panel.layout_inputs.end());
+		panel.layout_inputs.clear();
 		m_pointer_events.insert(m_pointer_events.end(), panel.pointers.begin(), panel.pointers.end());
 		panel.pointers.clear();
+	}
+
+	// the layout's knobs and sliders, once the inputs they show are
+	// resolved; also for a host that draws the layout itself, as attaching
+	// hides the warnings of layout scripts
+	if (!m_layout_controls_attached && (machine().phase() == machine_phase::RUNNING))
+	{
+		m_layout_controls.attach(*m_target);
+		m_layout_controls_attached = true;
 	}
 
 	// the layout for a host that draws the panel itself, at the rate
@@ -676,6 +721,24 @@ void plugin_osd_interface::update_panel()
 		}
 	}
 
+	// inputs pressed through the description, each state held a while
+	for (plugin_panel::layout_input_event const &event : m_layout_input_events)
+		layout_input(event);
+	m_layout_input_events.clear();
+	attotime const emulated = machine().time();
+	for (note_input &input : m_layout_inputs)
+	{
+		while (!input.pending.empty() && (input.pending.front() == input.pressed))
+			input.pending.pop_front();
+		if (input.pending.empty() || ((emulated - input.changed) < PANEL_MIN_HOLD))
+			continue;
+		input.pressed = input.pending.front();
+		input.pending.pop_front();
+		input.changed = emulated;
+		input.field->set_value(input.pressed ? 1 : 0);
+		input.field->port().frame_update();
+	}
+
 	if (!width || !height)
 	{
 		m_pointer_events.clear();
@@ -683,13 +746,6 @@ void plugin_osd_interface::update_panel()
 	}
 	while (m_pointer_events.size() > plugin_panel::MAX_POINTER_EVENTS)
 		m_pointer_events.pop_front();
-
-	// the layout's knobs and sliders, once the inputs they show are resolved
-	if (!m_layout_controls_attached && (machine().phase() == machine_phase::RUNNING))
-	{
-		m_layout_controls.attach(*m_target);
-		m_layout_controls_attached = true;
-	}
 
 	bool const resized = (s32(width) != m_target->width()) || (s32(height) != m_target->height());
 	if (resized)

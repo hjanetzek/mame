@@ -836,6 +836,14 @@ int mp_layout_element_image(mp_instance *instance, uint32_t element, uint32_t st
 	return instance->io.panel.draw_element(element, state, orientation, width, height, rgba) ? 1 : 0;
 }
 
+void mp_layout_input(mp_instance *instance, uint64_t layout_serial, uint32_t item, int pressed)
+{
+	plugin_panel &panel = instance->io.panel;
+	std::lock_guard<std::mutex> lock(panel.mutex);
+	if (panel.layout_inputs.size() < plugin_panel::MAX_POINTER_EVENTS)
+		panel.layout_inputs.push_back(plugin_panel::layout_input_event{ layout_serial, item, pressed != 0 });
+}
+
 uint64_t mp_layout_screen(mp_instance *instance, uint32_t screen, uint64_t serial, uint32_t *width, uint32_t *height, void *rgba, size_t size)
 {
 	plugin_panel &panel = instance->io.panel;

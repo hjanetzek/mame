@@ -94,6 +94,14 @@ struct plugin_panel
 	// draw(), so the emulation thread isn't building a list meanwhile
 	bool draw_element(std::uint32_t element, std::uint32_t state, std::uint32_t orientation, std::uint32_t width, std::uint32_t height, void *rgba);
 
+	struct layout_input_event
+	{
+		std::uint64_t serial;   // of the description
+		std::uint32_t item;
+		bool pressed;
+	};
+	std::vector<layout_input_event> layout_inputs;
+
 	bool layout_requested = false;
 	std::uint64_t layout_serial = 0;
 	float layout_aspect = 1.0f;
@@ -227,12 +235,16 @@ private:
 
 	// the layout for the host (plugin_panel::layout_*)
 	void capture_layout();
+	void layout_input(plugin_panel::layout_input_event const &event);
+	void release_layout_inputs();
 	layout_view *m_layout_view = nullptr;
 	std::vector<layout_view_item *> m_layout_item_ptrs;
 	std::vector<screen_device *> m_layout_screen_ptrs;
 	std::vector<mp_layout_item_state> m_layout_states;
 	std::vector<std::vector<std::uint8_t>> m_layout_screen_images;
 	std::uint64_t m_layout_counter = 0;   // for the serials, which never repeat
+	std::uint64_t m_layout_serial = 0;    // of the current description
+	std::vector<plugin_panel::layout_input_event> m_layout_input_events;
 	osd_ticks_t m_layout_captured = 0;
 
 	// layout development (plugin_io::reload_layout)
@@ -263,6 +275,10 @@ private:
 	std::vector<note_mapping> m_note_map;
 	int m_note_held[128];   // input pressed by each note, -1 for none
 	plugin_midi_assembler m_note_assembler;
+
+	// inputs pressed through the layout description (mp_layout_input),
+	// held like the notes' inputs
+	std::vector<note_input> m_layout_inputs;
 };
 
 #endif // MAME_OSD_PLUGIN_PLUGINOSD_H
