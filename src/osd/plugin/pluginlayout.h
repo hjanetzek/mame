@@ -28,6 +28,9 @@ public:
 	// attaches to the target's current view, once the machine's inputs are resolved
 	void attach(render_target &target);
 
+	// forgets the controls, before their target goes away
+	void detach();
+
 private:
 	struct control
 	{

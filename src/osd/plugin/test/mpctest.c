@@ -30,7 +30,8 @@
  * and block size (default 256).  MPCTEST_NVRAM_OUT=dir writes the NVRAM
  * of the first instance at the end, one file per device named like
  * MAME's NVRAM files, e.g. to make a data folder's starting NVRAM.
- * MPCTEST_OPTIONS=name=value;... passes extra MAME options.
+ * MPCTEST_OPTIONS=name=value;... passes extra MAME options, and
+ * MPCTEST_RELOAD_LAYOUT=1 reloads changed layout files.
  *
  *   cc -O2 -o mpctest src/osd/plugin/test/mpctest.c -Isrc/osd/plugin -ldl -lpthread
  *   ./mpctest ./libmameplugin_synths.so tx81z roms out.wav [seconds] [datapath] [--realtime]
@@ -512,6 +513,7 @@ int main(int argc, char **argv)
 		config.rompath = rompath;
 		config.datapath = j->datapath[0] ? j->datapath : NULL;
 		config.options = options[0] ? options : NULL;
+		config.flags = getenv("MPCTEST_RELOAD_LAYOUT") ? MP_FLAG_RELOAD_LAYOUT : 0;
 		config.sample_rate = RATE;
 		config.max_block_frames = BLOCK;
 

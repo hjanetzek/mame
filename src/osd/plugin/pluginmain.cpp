@@ -287,6 +287,7 @@ struct mp_instance
 			if ((mapping.note < 128) && mapping.input)
 				io.note_map.push_back(plugin_io::note_mapping{ mapping.note, mapping.min_velocity, mapping.input });
 		}
+		io.reload_layout = (config.flags & MP_FLAG_RELOAD_LAYOUT) != 0;
 	}
 
 	void emulation_thread(std::promise<std::string> started);
@@ -371,6 +372,13 @@ void mp_instance::set_options(osd_options &options)
 		set(OPTION_NVRAM_DIRECTORY, datapath + PATH_SEPARATOR "nvram");
 		set(OPTION_STATE_DIRECTORY, datapath + PATH_SEPARATOR "sta");
 		set(OPTION_DIFF_DIRECTORY, datapath + PATH_SEPARATOR "diff");
+
+		// layout files (artwork) are looked for in a folder named after
+		// the machine: with <root>/<machine> as the data path, that's the
+		// data path itself, e.g. <root>/tx81z/default.lay
+		std::string::size_type const end = datapath.find_last_not_of(PATH_SEPARATOR);
+		std::string::size_type const sep = (end == std::string::npos) ? std::string::npos : datapath.find_last_of(PATH_SEPARATOR, end);
+		set(OPTION_ARTPATH, (sep == std::string::npos) ? std::string(".") : (sep ? datapath.substr(0, sep) : std::string(PATH_SEPARATOR)));
 	}
 	for (auto const &opt : extra_options)
 		options.set_value(opt.first, opt.second, OPTION_PRIORITY_MAXIMUM);

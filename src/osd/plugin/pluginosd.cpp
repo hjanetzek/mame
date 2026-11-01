@@ -12,6 +12,7 @@
 #include "pluginosd.h"
 #include "pluginmidi.h"
 
+#include "fileio.h"
 #include "imagedev/midiin.h"
 #include "interface/midiport.h"
 
@@ -19,10 +20,12 @@
 #include "rendersw.hxx"
 #include "rendlay.h"
 
+#include "osdfile.h"
 #include "strformat.h"
 
 #include <algorithm>
 #include <bit>
+#include <chrono>
 #include <type_traits>
 #include <vector>
 #include <cstdio>
@@ -42,6 +45,9 @@ attotime const PANEL_MIN_HOLD = attotime::from_msec(50);
 
 // most frames the panel is rendered per second
 constexpr int PANEL_MAX_FPS = 60;
+
+// how often layout development checks the layout files
+constexpr int LAYOUT_CHECKS_PER_SECOND = 2;
 
 // how often MIDI notes are turned into input changes, and the shortest time
 // an input pressed by a note keeps a state: the firmware has to see it when
@@ -267,8 +273,24 @@ void plugin_osd_interface::init(running_machine &machine)
 
 	// there are no windows, but the core expects a UI target; it renders
 	// the machine's layout for the plugin GUI
-	m_target = machine.render().target_alloc();
-	machine.render().set_ui_target(*m_target);
+	create_panel_target();
+	if (m_io.reload_layout)
+		m_layout_files = layout_files_state();
+
+	// a machine with a MIDI input reads the host's MIDI itself, other machines
+	// can have notes press their inputs
+	if (!m_io.note_map.empty() && !midiin_device_enumerator(machine.root_device()).first())
+	{
+		m_note_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(plugin_osd_interface::update_notes), this));
+		m_note_timer->adjust(NOTE_PERIOD, 0, NOTE_PERIOD);
+	}
+}
+
+void plugin_osd_interface::create_panel_target()
+{
+	// a new target loads the layout files again
+	m_target = machine().render().target_alloc();
+	machine().render().set_ui_target(*m_target);
 
 	// natural size: the view's aspect at no less than one pixel per
 	// screen pixel
@@ -283,17 +305,52 @@ void plugin_osd_interface::init(running_machine &machine)
 		height = s32(min_width / aspect + 0.5f);
 	}
 
-	// a machine with a MIDI input reads the host's MIDI itself, other machines
-	// can have notes press their inputs
-	if (!m_io.note_map.empty() && !midiin_device_enumerator(machine.root_device()).first())
-	{
-		m_note_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(plugin_osd_interface::update_notes), this));
-		m_note_timer->adjust(NOTE_PERIOD, 0, NOTE_PERIOD);
-	}
-
 	std::lock_guard<std::mutex> lock(m_io.panel.mutex);
 	m_io.panel.natural_width = std::max(width, 1);
 	m_io.panel.natural_height = std::max(height, 1);
+}
+
+std::string plugin_osd_interface::layout_files_state() const
+{
+	// the files render_target looks for in the art path: <machine>.lay or
+	// default.lay in a folder named after the machine, or in a zip of that
+	// name; their sizes and times tell whether one changed
+	std::string result;
+	char const *const name = machine().system().name;
+	path_iterator paths(machine().options().art_path());
+	std::string dir;
+	while (paths.next(dir))
+	{
+		for (std::string const &file : {
+				util::string_format("%s" PATH_SEPARATOR "%s" PATH_SEPARATOR "%s.lay", dir, name, name),
+				util::string_format("%s" PATH_SEPARATOR "%s" PATH_SEPARATOR "default.lay", dir, name),
+				util::string_format("%s" PATH_SEPARATOR "%s.zip", dir, name) })
+		{
+			osd::directory::entry::ptr const entry = osd_stat(file);
+			if (entry)
+				result += util::string_format("%s %d %d\n", file, entry->size, std::chrono::duration_cast<std::chrono::nanoseconds>(entry->last_modified.time_since_epoch()).count());
+		}
+	}
+	return result;
+}
+
+void plugin_osd_interface::reload_layout()
+{
+	// the GUI must not draw a list of the target that goes away
+	{
+		std::lock_guard<std::mutex> lock(m_io.panel.mutex);
+		std::lock_guard<std::mutex> drawing(m_io.panel.draw_mutex);
+		m_io.panel.list = nullptr;
+	}
+
+	m_layout_controls.detach();
+	m_layout_controls_attached = false;
+	render_target *const previous = m_target;
+	create_panel_target();
+	m_target->resolve_tags();
+	machine().render().target_free(previous);
+	m_panel_fingerprint = 0;
+	osd_printf_info("plugin: layout files changed, panel reloaded\n");
 }
 
 void plugin_osd_interface::update_notes(s32 param)
@@ -407,6 +464,23 @@ void plugin_osd_interface::update(bool skip_redraw)
 
 void plugin_osd_interface::update_panel()
 {
+	// in layout development, files in the art path that change are
+	// loaded again, without restarting the machine
+	if (m_io.reload_layout && (machine().phase() == machine_phase::RUNNING))
+	{
+		osd_ticks_t const now = osd_ticks();
+		if ((now - m_layout_checked) >= (osd_ticks_per_second() / LAYOUT_CHECKS_PER_SECOND))
+		{
+			m_layout_checked = now;
+			std::string state = layout_files_state();
+			if (state != m_layout_files)
+			{
+				m_layout_files = std::move(state);
+				reload_layout();
+			}
+		}
+	}
+
 	plugin_panel &panel = m_io.panel;
 	u32 width, height;
 	bool consumed;

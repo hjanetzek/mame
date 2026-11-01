@@ -18,6 +18,12 @@
  * mp_config when the machine is created again.  NVRAM files in the data
  * path are only read, as initial contents for machines created without
  * NVRAM data, and never written.
+ *
+ * Layout files (MAME artwork) are looked for in the data path's parent
+ * folder, in a folder or zip named after the machine: with the data path
+ * <root>/<machine>, <root>/<machine>/default.lay or <machine>.lay is
+ * shown instead of the layout compiled into the library.  With
+ * MP_FLAG_RELOAD_LAYOUT they are loaded again whenever they change.
  */
 #ifndef MAME_OSD_PLUGIN_MAME_PLUGIN_H
 #define MAME_OSD_PLUGIN_MAME_PLUGIN_H
@@ -35,7 +41,7 @@ extern "C" {
 #define MP_API __attribute__((visibility("default")))
 #endif
 
-#define MP_API_VERSION 6
+#define MP_API_VERSION 7
 
 typedef struct mp_instance mp_instance;
 
@@ -61,7 +67,11 @@ typedef struct mp_config
 	size_t nvram_size;
 	const mp_note_mapping *note_map;   /* notes that press inputs of a machine without MIDI input, may be NULL */
 	uint32_t note_map_size;
+	uint32_t flags;              /* MP_FLAG_* */
 } mp_config;
+
+/* mp_config::flags */
+#define MP_FLAG_RELOAD_LAYOUT 1  /* layout development: load the panel's layout files again when they change */
 
 typedef struct mp_midi_event
 {

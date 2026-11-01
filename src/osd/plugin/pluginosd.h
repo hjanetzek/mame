@@ -134,6 +134,10 @@ struct plugin_io
 		std::string input;
 	};
 	std::vector<note_mapping> note_map;
+
+	// layout development: load the panel's layout files again when they
+	// change, set before the machine starts
+	bool reload_layout = false;
 };
 
 
@@ -191,6 +195,13 @@ private:
 	std::vector<attotime> m_pointer_changed;   // last button change per pointer
 	osd_ticks_t m_panel_last = 0;
 	u64 m_panel_fingerprint = 0;   // of the frame the GUI got last
+
+	// layout development (plugin_io::reload_layout)
+	void create_panel_target();
+	std::string layout_files_state() const;
+	void reload_layout();
+	std::string m_layout_files;
+	osd_ticks_t m_layout_checked = 0;
 	plugin_layout_controls m_layout_controls;
 	bool m_layout_controls_attached = false;
 

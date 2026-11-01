@@ -76,6 +76,12 @@ void plugin_layout_controls::attach(render_target &target)
 	view.set_forget_pointers_callback(layout_view::forget_pointers_delegate(&plugin_layout_controls::forget_pointers, this));
 }
 
+void plugin_layout_controls::detach()
+{
+	forget_pointers();
+	m_controls.clear();
+}
+
 void plugin_layout_controls::pointer_updated(osd::ui_event_handler::pointer type, u16 id, u16 device, float x, float y, u32 buttons, u32 pressed, u32 released, s16 clicks)
 {
 	if (!BIT(buttons, 0))
