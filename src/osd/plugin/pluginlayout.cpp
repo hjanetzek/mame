@@ -53,6 +53,15 @@ void plugin_layout_controls::attach(render_target &target)
 			target.set_visibility_toggle(i, false);
 	}
 
+	// and these items, which scripts set to state 0 (e.g. "plugin_warning")
+	for (layout_view_item &item : view.items())
+	{
+		std::string id = item.id();
+		std::transform(id.begin(), id.end(), id.begin(), [] (unsigned char c) { return std::tolower(c); });
+		if (id.find("warning") != std::string::npos)
+			item.set_state(0);
+	}
+
 	for (layout_view_item &item : view.items())
 	{
 		if (ioport_field *const field = control_field(item.animation_input_tag_and_mask()); field && item.bounds_animated())
