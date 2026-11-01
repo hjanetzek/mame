@@ -2005,9 +2005,9 @@ void sound_manager::streams_update()
 	{
 #ifndef SOUND_DISABLE_THREADING
 		std::unique_lock<std::mutex> dlock(m_effects_data_mutex);
-#endif
 		for(auto &si : m_speakers)
 			si.m_buffer.sync();
+#endif
 
 		m_effects_prev_time = m_effects_cur_time;
 		m_effects_cur_time = now;
@@ -2045,6 +2045,14 @@ void sound_manager::streams_update()
 
 		emulator_info::sound_hook(sound_data);
 	}
+
+#ifdef SOUND_DISABLE_THREADING
+	// Consume the speakers' samples only once the effects have taken them:
+	// a speaker stream updated between two frames, e.g. on a gain change,
+	// has already written part of the next frame's samples
+	for(auto &si : m_speakers)
+		si.m_buffer.sync();
+#endif
 
 	for(sound_stream *stream : m_ordered_streams)
 		stream->sync(now);
