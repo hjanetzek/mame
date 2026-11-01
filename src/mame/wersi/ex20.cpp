@@ -997,25 +997,15 @@ void wersi_ex20_state::adcwr_w(uint8_t data)
 	//   bit 4 = 0 → IC4 (drawbar 9-16)
 	//   bit 5 = 0 → IC1 (controls)
 	m_adc_value = 0xff;  // default max
-	static int first_scan = 16;
 	if (!BIT(m_potsel, 3))
 	{
 		// IC5: drawbar sliders 1-8
-		//m_adc_value = m_drawbars[channel]->read();
-		m_adc_value = 0;
-		if (first_scan > 0) {
-			first_scan--;
-		} else {
-			if (channel == 0)
-				m_adc_value = 0xff;
-		}
+		m_adc_value = m_drawbars[channel]->read();
 	}
 	else if (!BIT(m_potsel, 4))
 	{
-		m_adc_value = 0;
 		// IC4: drawbar sliders 9-16
-		// m_adc_value = m_drawbars[8 + channel]->read();
-		// m_adc_value = m_drawbars[8 + channel]->read();
+		m_adc_value = m_drawbars[8 + channel]->read();
 	}
 	else if (!BIT(m_potsel, 5))
 	{
@@ -1030,7 +1020,7 @@ void wersi_ex20_state::adcwr_w(uint8_t data)
 		case 2: m_adc_value = 0x7f; break;              // wheel 1
 		case 3: m_adc_value = 0xff; break;              // right
 		case 4: m_adc_value = 0xff; break;              // balance
-		case 5: m_adc_value = 0xff; break; //m_main_vol->read(); break; // main volume
+		case 5: m_adc_value = m_main_vol->read(); break; // main volume
 		case 6: m_adc_value = 0xff; break;              // left
 		case 7: m_adc_value = 0x1; break;              // aftertouch (none on EX-20)
 		}
