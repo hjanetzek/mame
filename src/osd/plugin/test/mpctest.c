@@ -27,7 +27,9 @@
  * boot, 200ms apart, and starts the notes a second after the last.
  * MPCTEST_NOTE=n holds note n instead of playing the pattern.
  * MPCTEST_RATE and MPCTEST_BLOCK set the sample rate (default 48000)
- * and block size (default 256).
+ * and block size (default 256).  MPCTEST_NVRAM_OUT=dir writes the NVRAM
+ * of the first instance at the end, one file per device named like
+ * MAME's NVRAM files, e.g. to make a data folder's starting NVRAM.
  *
  *   cc -O2 -o mpctest src/osd/plugin/test/mpctest.c -Isrc/osd/plugin -ldl -lpthread
  *   ./mpctest ./libmameplugin_synths.so tx81z roms out.wav [seconds] [datapath] [--realtime]
@@ -236,7 +238,7 @@ static void *render(void *param)
 
 	j->panel = getenv("MPCTEST_PANEL");
 	pthread_t panel_thread;
-	double clicks[32][6];
+	double clicks[256][6];
 	uint32_t click_count = 0;
 	double const *click = NULL;   /* the click holding the button */
 	uint32_t buttons = 0;
@@ -252,7 +254,7 @@ static void *render(void *param)
 		const char *clickenv = getenv("MPCTEST_CLICK");
 		if (clickenv)
 		{
-			for (const char *c = clickenv; c && *c && (click_count < 32); c = strchr(c, ';') ? strchr(c, ';') + 1 : NULL)
+			for (const char *c = clickenv; c && *c && (click_count < 256); c = strchr(c, ';') ? strchr(c, ';') + 1 : NULL)
 			{
 				double *const k = clicks[click_count];
 				int const n = sscanf(c, "%lf,%lf,%lf,%lf,%lf,%lf", &k[0], &k[1], &k[2], &k[3], &k[4], &k[5]);
@@ -357,6 +359,55 @@ static void *render(void *param)
 	if (j->panel)
 		pthread_join(panel_thread, NULL);
 	return NULL;
+}
+
+static uint32_t get32(const uint8_t *p) { return p[0] | (p[1] << 8) | (p[2] << 16) | ((uint32_t)p[3] << 24); }
+
+/* splits the blob of mp_nvram() ("MPNV", version, count, then tag and
+   data of each device) into files */
+static int write_nvram(mp_instance *inst, const char *dir)
+{
+	size_t size = 0;
+	const uint8_t *blob = mp_nvram(inst, &size);
+	if (!blob || (size < 12) || memcmp(blob, "MPNV", 4))
+	{
+		fprintf(stderr, "no NVRAM\n");
+		return 0;
+	}
+	const uint8_t *p = blob + 12, *const end = blob + size;
+	for (uint32_t count = get32(blob + 8); count--; )
+	{
+		if (end - p < 4)
+			return 0;
+		uint32_t const taglen = get32(p);
+		p += 4;
+		if ((uint32_t)(end - p) < taglen + 4)
+			return 0;
+		char name[256];
+		uint32_t n = 0;
+		for (uint32_t i = (taglen && (p[0] == ':')) ? 1 : 0; (i < taglen) && (n < sizeof(name) - 1); i++)
+			name[n++] = (p[i] == ':') ? '_' : (char)p[i];
+		name[n] = 0;
+		p += taglen;
+		uint32_t const datalen = get32(p);
+		p += 4;
+		if ((uint32_t)(end - p) < datalen)
+			return 0;
+		char path[1400];
+		snprintf(path, sizeof(path), "%s/%s", dir, name);
+		FILE *f = fopen(path, "wb");
+		if (!f || (fwrite(p, 1, datalen, f) != datalen))
+		{
+			perror(path);
+			if (f)
+				fclose(f);
+			return 0;
+		}
+		fclose(f);
+		fprintf(stderr, "wrote %s (%u bytes)\n", path, datalen);
+		p += datalen;
+	}
+	return 1;
 }
 
 int main(int argc, char **argv)
@@ -506,6 +557,10 @@ int main(int argc, char **argv)
 		result |= jobs[i].result;
 		printf("instance %d: underruns %llu frames\n", i, (unsigned long long)mp_underruns(jobs[i].inst));
 	}
+
+	const char *nvramdir = getenv("MPCTEST_NVRAM_OUT");
+	if (nvramdir && !write_nvram(jobs[0].inst, nvramdir))
+		result = 1;
 
 	for (int i = 0; i < instances; i++)
 		mp_destroy(jobs[i].inst);
