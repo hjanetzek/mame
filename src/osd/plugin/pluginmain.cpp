@@ -281,6 +281,12 @@ struct mp_instance
 			for (char const *const *opt = config.options; opt[0] && opt[1]; opt += 2)
 				extra_options.emplace_back(opt[0], opt[1]);
 		}
+		for (uint32_t i = 0; config.note_map && (i < config.note_map_size); i++)
+		{
+			mp_note_mapping const &mapping = config.note_map[i];
+			if ((mapping.note < 128) && mapping.input)
+				io.note_map.push_back(plugin_io::note_mapping{ mapping.note, mapping.min_velocity, mapping.input });
+		}
 	}
 
 	void emulation_thread(std::promise<std::string> started);

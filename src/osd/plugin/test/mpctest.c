@@ -18,6 +18,10 @@
  * holds the primary button down at panel pixel x,y from t0 to t1
  * seconds.
  *
+ * MPCTEST_NOTES=note=input;note=input;... maps notes to inputs of a
+ * machine without MIDI input (mp_config::note_map), e.g.
+ * "60=SNARE 3;64=SIDESTICK".
+ *
  *   cc -O2 -o mpctest src/osd/plugin/test/mpctest.c -Isrc/osd/plugin -ldl -lpthread
  *   ./mpctest ./libmameplugin_synths.so tx81z roms out.wav [seconds] [datapath] [--realtime]
  */
@@ -341,6 +345,26 @@ int main(int argc, char **argv)
 		config.datapath = j->datapath[0] ? j->datapath : NULL;
 		config.sample_rate = RATE;
 		config.max_block_frames = BLOCK;
+
+		static char notes_text[1024];
+		static mp_note_mapping note_map[64];
+		const char *notesenv = getenv("MPCTEST_NOTES");
+		if (notesenv && !config.note_map_size)
+		{
+			snprintf(notes_text, sizeof(notes_text), "%s", notesenv);
+			for (char *entry = strtok(notes_text, ";"); entry && (config.note_map_size < 64); entry = strtok(NULL, ";"))
+			{
+				char *eq = strchr(entry, '=');
+				if (!eq)
+					continue;
+				*eq = 0;
+				note_map[config.note_map_size].note = (uint8_t)atoi(entry);
+				note_map[config.note_map_size].min_velocity = 0;
+				note_map[config.note_map_size].input = eq + 1;
+				config.note_map_size++;
+			}
+		}
+		config.note_map = config.note_map_size ? note_map : NULL;
 
 		char error[1024];
 		j->inst = mp_create(&config, error, sizeof(error));

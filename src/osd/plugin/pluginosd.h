@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include "pluginmidi.h"
 #include "spscqueue.h"
 
 #include "modules/lib/osdobj_common.h"
@@ -110,6 +111,16 @@ struct plugin_io
 	std::string log_text;
 
 	plugin_panel panel;
+
+	// notes that press inputs of a machine without MIDI input, set before
+	// the machine starts
+	struct note_mapping
+	{
+		std::uint8_t note;
+		std::uint8_t min_velocity;
+		std::string input;
+	};
+	std::vector<note_mapping> note_map;
 };
 
 
@@ -153,6 +164,9 @@ public:
 
 private:
 	void update_panel();
+	void update_notes(s32 param);
+	void note_message(std::uint8_t const *data, std::size_t size);
+	void queue_input(int input, bool pressed);
 
 	plugin_io &m_io;
 	float m_convert[2048];
@@ -163,6 +177,26 @@ private:
 	std::vector<std::uint32_t> m_pointer_buttons;
 	std::vector<attotime> m_pointer_changed;   // last button change per pointer
 	osd_ticks_t m_panel_last = 0;
+
+	// MIDI notes pressing inputs (plugin_io::note_map), emulation thread
+	struct note_input
+	{
+		ioport_field *field;
+		bool pressed = false;
+		attotime changed;
+		std::deque<bool> pending;   // states still to apply, each held for a while
+	};
+	struct note_mapping
+	{
+		std::uint8_t note;
+		std::uint8_t min_velocity;
+		int input;   // index into m_note_inputs
+	};
+	emu_timer *m_note_timer = nullptr;
+	std::vector<note_input> m_note_inputs;
+	std::vector<note_mapping> m_note_map;
+	int m_note_held[128];   // input pressed by each note, -1 for none
+	plugin_midi_assembler m_note_assembler;
 };
 
 #endif // MAME_OSD_PLUGIN_PLUGINOSD_H

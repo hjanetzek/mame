@@ -12,6 +12,7 @@
 #include "pluginosd.h"
 #include "pluginmidi.h"
 
+#include "imagedev/midiin.h"
 #include "interface/midiport.h"
 
 #include "render.h"
@@ -41,6 +42,12 @@ attotime const PANEL_MIN_HOLD = attotime::from_msec(50);
 
 // most frames the panel is rendered per second
 constexpr int PANEL_MAX_FPS = 60;
+
+// how often MIDI notes are turned into input changes, and the shortest time
+// an input pressed by a note keeps a state: the firmware has to see it when
+// it scans its keys
+attotime const NOTE_PERIOD = attotime::from_hz(2000);
+attotime const NOTE_MIN_HOLD = attotime::from_msec(10);
 
 
 // stereo sink node presented to the sound manager
@@ -184,6 +191,7 @@ plugin_osd_interface::plugin_osd_interface(osd_options &options, plugin_io &io)
 	: osd_common_t(options)
 	, m_io(io)
 {
+	std::fill(std::begin(m_note_held), std::end(m_note_held), -1);
 }
 
 plugin_osd_interface::~plugin_osd_interface()
@@ -213,9 +221,120 @@ void plugin_osd_interface::init(running_machine &machine)
 		height = s32(min_width / aspect + 0.5f);
 	}
 
+	// a machine with a MIDI input reads the host's MIDI itself, other machines
+	// can have notes press their inputs
+	if (!m_io.note_map.empty() && !midiin_device_enumerator(machine.root_device()).first())
+	{
+		m_note_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(plugin_osd_interface::update_notes), this));
+		m_note_timer->adjust(NOTE_PERIOD, 0, NOTE_PERIOD);
+	}
+
 	std::lock_guard<std::mutex> lock(m_io.panel.mutex);
 	m_io.panel.natural_width = std::max(width, 1);
 	m_io.panel.natural_height = std::max(height, 1);
+}
+
+void plugin_osd_interface::update_notes(s32 param)
+{
+	// the inputs are set up after the OSD, so the names are looked up here
+	if (m_note_map.empty())
+	{
+		for (plugin_io::note_mapping const &mapping : m_io.note_map)
+		{
+			ioport_field *found = nullptr;
+			for (auto const &port : machine().ioport().ports())
+			{
+				for (ioport_field &field : port.second->fields())
+				{
+					if (!field.is_analog() && (field.name() == mapping.input))
+						found = &field;
+				}
+			}
+			if (!found)
+			{
+				osd_printf_warning("plugin: note %d: machine has no input \"%s\"\n", mapping.note, mapping.input);
+				continue;
+			}
+
+			auto const known = std::find_if(m_note_inputs.begin(), m_note_inputs.end(), [found] (note_input const &input) { return input.field == found; });
+			int const index = int(known - m_note_inputs.begin());
+			if (known == m_note_inputs.end())
+				m_note_inputs.push_back(note_input{ found });
+			m_note_map.push_back(note_mapping{ mapping.note, mapping.min_velocity, index });
+		}
+		if (m_note_map.empty())
+		{
+			m_note_timer->enable(false);
+			return;
+		}
+	}
+
+	// the host's MIDI that is due
+	std::uint64_t const now_frame = machine().time().as_ticks(m_io.sample_rate);
+	for (plugin_io::midi_byte const *next = m_io.midi.front(); next && (next->frame <= now_frame); next = m_io.midi.front())
+	{
+		std::uint8_t const data = next->data;
+		m_io.midi.pop(nullptr, 1);
+		m_note_assembler.write(data, [this] (std::uint8_t const *message, std::size_t size) { note_message(message, size); }, [] () { });
+	}
+
+	// apply the next state of each input once the current one was held long enough
+	attotime const now = machine().time();
+	for (note_input &input : m_note_inputs)
+	{
+		while (!input.pending.empty() && (input.pending.front() == input.pressed))
+			input.pending.pop_front();
+		if (input.pending.empty() || ((now - input.changed) < NOTE_MIN_HOLD))
+			continue;
+
+		input.pressed = input.pending.front();
+		input.pending.pop_front();
+		input.changed = now;
+		input.field->set_value(input.pressed ? 1 : 0);
+		input.field->port().frame_update();
+	}
+}
+
+void plugin_osd_interface::note_message(std::uint8_t const *data, std::size_t size)
+{
+	// notes on any channel
+	if ((size != 3) || ((data[0] & 0xe0) != 0x80))
+		return;
+	std::uint8_t const note = data[1];
+	std::uint8_t const velocity = data[2];
+	bool const on = ((data[0] & 0xf0) == 0x90) && velocity;
+
+	int &held = m_note_held[note];
+	if (held >= 0)
+	{
+		queue_input(held, false);
+		held = -1;
+	}
+	if (!on)
+		return;
+
+	note_mapping const *best = nullptr;
+	for (note_mapping const &mapping : m_note_map)
+	{
+		if ((mapping.note == note) && (mapping.min_velocity <= velocity) && (!best || (mapping.min_velocity > best->min_velocity)))
+			best = &mapping;
+	}
+	if (!best)
+		return;
+
+	queue_input(best->input, true);
+	held = best->input;
+}
+
+void plugin_osd_interface::queue_input(int input, bool pressed)
+{
+	// a press of an input that is down, by another note, releases it first
+	std::deque<bool> &pending = m_note_inputs[input].pending;
+	bool const last = pending.empty() ? m_note_inputs[input].pressed : pending.back();
+	if (pressed && last)
+		pending.push_back(false);
+	if (pressed || last)
+		pending.push_back(pressed);
 }
 
 void plugin_osd_interface::update(bool skip_redraw)

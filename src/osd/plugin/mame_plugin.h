@@ -35,9 +35,18 @@ extern "C" {
 #define MP_API __attribute__((visibility("default")))
 #endif
 
-#define MP_API_VERSION 5
+#define MP_API_VERSION 6
 
 typedef struct mp_instance mp_instance;
+
+/* for machines without a MIDI input: a MIDI note pressing one of the
+   machine's inputs while it is held */
+typedef struct mp_note_mapping
+{
+	uint8_t note;
+	uint8_t min_velocity;        /* of the mappings of a note, the one with the highest min_velocity not above the velocity is used */
+	const char *input;           /* name of an input of the machine, e.g. "SNARE 1" */
+} mp_note_mapping;
 
 typedef struct mp_config
 {
@@ -50,6 +59,8 @@ typedef struct mp_config
 	const char *const *options;  /* NULL-terminated name/value pairs of extra MAME options, may be NULL */
 	const void *nvram;           /* NVRAM contents from mp_nvram() to start with, may be NULL */
 	size_t nvram_size;
+	const mp_note_mapping *note_map;   /* notes that press inputs of a machine without MIDI input, may be NULL */
+	uint32_t note_map_size;
 } mp_config;
 
 typedef struct mp_midi_event
