@@ -87,7 +87,7 @@ public:
 	}
 
 private:
-	std::uint64_t current_frame() const { return m_machine.time().as_ticks(m_io.sample_rate); }
+	std::uint64_t current_frame() const { return m_io.frame(m_machine.time()); }
 
 	running_machine &m_machine;
 	plugin_io &m_io;
@@ -111,7 +111,7 @@ public:
 				data,
 				[this] (uint8_t const *message, std::size_t size)
 				{
-					std::uint64_t const frame = m_machine.time().as_ticks(m_io.sample_rate);
+					std::uint64_t const frame = m_io.frame(m_machine.time());
 					if (!plugin_midi_record::push(m_io.midi_out, frame, message, size, m_record))
 						m_io.midi_out_dropped.fetch_add(1, std::memory_order_relaxed);
 				},
@@ -270,7 +270,7 @@ void plugin_osd_interface::update_notes(s32 param)
 	}
 
 	// the host's MIDI that is due
-	std::uint64_t const now_frame = machine().time().as_ticks(m_io.sample_rate);
+	std::uint64_t const now_frame = m_io.frame(machine().time());
 	for (plugin_io::midi_byte const *next = m_io.midi.front(); next && (next->frame <= now_frame); next = m_io.midi.front())
 	{
 		std::uint8_t const data = next->data;
@@ -364,6 +364,13 @@ void plugin_osd_interface::update_panel()
 	}
 	while (m_pointer_events.size() > plugin_panel::MAX_POINTER_EVENTS)
 		m_pointer_events.pop_front();
+
+	// the layout's knobs and sliders, once the inputs they show are resolved
+	if (!m_layout_controls_attached && (machine().phase() == machine_phase::RUNNING))
+	{
+		m_layout_controls.attach(*m_target);
+		m_layout_controls_attached = true;
+	}
 
 	bool const resized = (s32(width) != m_target->width()) || (s32(height) != m_target->height());
 	if (resized)
@@ -471,6 +478,12 @@ void plugin_osd_interface::sound_stream_sink_update(uint32_t id, const int16_t *
 		buffer += chunk;
 		remaining -= chunk;
 	}
+
+	// should the sound system deliver less audio than the emulated time,
+	// the output frames run behind by as much, and the emulation makes up
+	// for it instead of leaving the host short of audio for good
+	m_io.audio_frames += samples_this_frame;
+	m_io.audio_owed = s64(machine().time().as_ticks(m_io.sample_rate)) - s64(m_io.audio_frames);
 }
 
 std::unique_ptr<osd::midi_input_port> plugin_osd_interface::create_midi_input(std::string_view name)

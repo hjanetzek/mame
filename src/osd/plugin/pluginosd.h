@@ -11,11 +11,13 @@
 
 #pragma once
 
+#include "pluginlayout.h"
 #include "pluginmidi.h"
 #include "spscqueue.h"
 
 #include "modules/lib/osdobj_common.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <deque>
@@ -99,6 +101,17 @@ struct plugin_io
 	// interleaved stereo, emulation thread to host
 	spsc_queue<float> audio;
 
+	// output frame n is the audio's frame n, which the emulation reaches
+	// audio_owed frames later than its time says when the sound system
+	// delivered less (emulation thread only)
+	std::uint64_t audio_frames = 0;
+	std::int64_t audio_owed = 0;
+	std::uint64_t frame(attotime const &time) const
+	{
+		std::int64_t const ticks = std::int64_t(time.as_ticks(sample_rate));
+		return std::uint64_t(std::max<std::int64_t>(ticks - audio_owed, 0));
+	}
+
 	// timestamped bytes, host to emulation thread
 	spsc_queue<midi_byte> midi;
 
@@ -177,6 +190,8 @@ private:
 	std::vector<std::uint32_t> m_pointer_buttons;
 	std::vector<attotime> m_pointer_changed;   // last button change per pointer
 	osd_ticks_t m_panel_last = 0;
+	plugin_layout_controls m_layout_controls;
+	bool m_layout_controls_attached = false;
 
 	// MIDI notes pressing inputs (plugin_io::note_map), emulation thread
 	struct note_input

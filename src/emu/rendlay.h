@@ -302,6 +302,11 @@ public:
 	std::pair<ioport_port *, ioport_value> input_tag_and_mask() const { return std::make_pair(m_input_port, m_input_mask); }
 	bool clickthrough() const { return m_clickthrough; }
 
+	// animation: the input port selecting the state (if any), and the bounds of the states
+	std::pair<ioport_port *, ioport_value> animation_input_tag_and_mask() const { return std::make_pair(m_animinput_port, m_animmask); }
+	u8 animation_input_shift() const { return m_animshift; }
+	emu::render::detail::bounds_vector const &animation_bounds() const { return m_bounds; }
+
 	// fetch state based on configured source
 	int element_state() const { return m_get_elem_state(); }
 	int animation_state() const { return m_get_anim_state(); }

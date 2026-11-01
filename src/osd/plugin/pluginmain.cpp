@@ -445,7 +445,7 @@ void mp_instance::emulation_thread(std::promise<std::string> started)
 			if (nvram_requested.exchange(false, std::memory_order_acq_rel))
 				serve_nvram(machine);
 			std::uint64_t const target_frame = played.load(std::memory_order_acquire) + latency.load(std::memory_order_relaxed);
-			attotime const target = attotime::from_ticks(target_frame, io.sample_rate);
+			attotime const target = attotime::from_ticks(std::uint64_t(std::max<std::int64_t>(std::int64_t(target_frame) + io.audio_owed, 0)), io.sample_rate);
 			if (machine.time() < target)
 			{
 				if (!machine.run_until(target))

@@ -16,7 +16,8 @@
  * size times MPCTEST_PANEL_SCALE (default 1) and written to
  * <prefix>.<second>.ppm once per second.  MPCTEST_CLICK=x,y,t0,t1
  * holds the primary button down at panel pixel x,y from t0 to t1
- * seconds.
+ * seconds; MPCTEST_CLICK=x,y,t0,t1,x1,y1 drags from x,y to x1,y1
+ * meanwhile.
  *
  * MPCTEST_NOTES=note=input;note=input;... maps notes to inputs of a
  * machine without MIDI input (mp_config::note_map), e.g.
@@ -190,7 +191,7 @@ static void *render(void *param)
 
 	j->panel = getenv("MPCTEST_PANEL");
 	pthread_t panel_thread;
-	double click[4] = { -1, -1, -1, -1 };
+	double click[6] = { -1, -1, -1, -1, -1, -1 };
 	uint32_t buttons = 0;
 	if (j->panel)
 	{
@@ -203,7 +204,13 @@ static void *render(void *param)
 		mp_panel_set_size(inst, j->pw, j->ph);
 		const char *clickenv = getenv("MPCTEST_CLICK");
 		if (clickenv)
-			sscanf(clickenv, "%lf,%lf,%lf,%lf", &click[0], &click[1], &click[2], &click[3]);
+		{
+			if (sscanf(clickenv, "%lf,%lf,%lf,%lf,%lf,%lf", &click[0], &click[1], &click[2], &click[3], &click[4], &click[5]) < 6)
+			{
+				click[4] = click[0];
+				click[5] = click[1];
+			}
+		}
 		pthread_create(&panel_thread, NULL, draw_panel, j);
 	}
 
@@ -236,9 +243,10 @@ static void *render(void *param)
 		{
 			double const t = (double)start / RATE;
 			uint32_t const down = (click[2] >= 0) && (t >= click[2]) && (t < click[3]);
-			if (down != buttons)
+			if (down || (down != buttons))
 			{
-				mp_panel_pointer(inst, 0, (int32_t)click[0], (int32_t)click[1], down);
+				double const f = down ? (t - click[2]) / (click[3] - click[2]) : 1.0;
+				mp_panel_pointer(inst, 0, (int32_t)(click[0] + f * (click[4] - click[0])), (int32_t)(click[1] + f * (click[5] - click[1])), down);
 				buttons = down;
 			}
 		}
