@@ -330,6 +330,7 @@ void plugin_osd_interface::init(running_machine &machine)
 void plugin_osd_interface::create_panel_target()
 {
 	// a new target loads the layout files again
+	plugin_layout_controls::clear_scripts();
 	m_target = machine().render().target_alloc();
 	machine().render().set_ui_target(*m_target);
 

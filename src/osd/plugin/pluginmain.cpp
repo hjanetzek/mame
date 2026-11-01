@@ -70,7 +70,7 @@ bool emulator_info::draw_user_interface(running_machine &machine) { return false
 void emulator_info::periodic_check() { }
 bool emulator_info::frame_hook() { return false; }
 void emulator_info::sound_hook(const std::map<std::string, std::vector<std::pair<const float *, int>>> &sound) { }
-void emulator_info::layout_script_cb(layout_file &file, const char *script) { }
+void emulator_info::layout_script_cb(layout_file &file, const char *script) { plugin_layout_controls::add_script(script); }
 bool emulator_info::standalone() { return true; }
 
 
