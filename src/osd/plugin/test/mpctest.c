@@ -30,6 +30,7 @@
  * and block size (default 256).  MPCTEST_NVRAM_OUT=dir writes the NVRAM
  * of the first instance at the end, one file per device named like
  * MAME's NVRAM files, e.g. to make a data folder's starting NVRAM.
+ * MPCTEST_OPTIONS=name=value;... passes extra MAME options.
  *
  *   cc -O2 -o mpctest src/osd/plugin/test/mpctest.c -Isrc/osd/plugin -ldl -lpthread
  *   ./mpctest ./libmameplugin_synths.so tx81z roms out.wav [seconds] [datapath] [--realtime]
@@ -417,6 +418,25 @@ int main(int argc, char **argv)
 		fprintf(stderr, "usage: %s <library> <machine> <rompath> <out.wav> [seconds] [datapath] [--realtime]\n", argv[0]);
 		return 1;
 	}
+	/* MPCTEST_OPTIONS=name=value;name=value passes extra MAME options */
+	static char optbuf[4096];
+	static const char *options[65];
+	int optcount = 0;
+	if (getenv("MPCTEST_OPTIONS"))
+	{
+		snprintf(optbuf, sizeof(optbuf), "%s", getenv("MPCTEST_OPTIONS"));
+		for (char *item = strtok(optbuf, ";"); item && (optcount < 63); item = strtok(NULL, ";"))
+		{
+			char *const eq = strchr(item, '=');
+			if (!eq)
+				continue;
+			*eq = 0;
+			options[optcount++] = item;
+			options[optcount++] = eq + 1;
+		}
+	}
+	options[optcount] = NULL;
+
 	if (getenv("MPCTEST_RATE"))
 		RATE = (uint32_t)atoi(getenv("MPCTEST_RATE"));
 	if (getenv("MPCTEST_BLOCK"))
@@ -491,6 +511,7 @@ int main(int argc, char **argv)
 		config.driver = machine;
 		config.rompath = rompath;
 		config.datapath = j->datapath[0] ? j->datapath : NULL;
+		config.options = options[0] ? options : NULL;
 		config.sample_rate = RATE;
 		config.max_block_frames = BLOCK;
 
