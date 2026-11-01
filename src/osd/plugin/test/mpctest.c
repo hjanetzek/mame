@@ -17,11 +17,17 @@
  * <prefix>.<second>.ppm once per second.  MPCTEST_CLICK=x,y,t0,t1
  * holds the primary button down at panel pixel x,y from t0 to t1
  * seconds; MPCTEST_CLICK=x,y,t0,t1,x1,y1 drags from x,y to x1,y1
- * meanwhile.
+ * meanwhile.  Several clicks are separated by ';'.
  *
  * MPCTEST_NOTES=note=input;note=input;... maps notes to inputs of a
  * machine without MIDI input (mp_config::note_map), e.g.
  * "60=SNARE 3;64=SIDESTICK".
+ *
+ * MPCTEST_SYSEX=file.syx sends the SysEx messages of the file after
+ * boot, 200ms apart, and starts the notes a second after the last.
+ * MPCTEST_NOTE=n holds note n instead of playing the pattern.
+ * MPCTEST_RATE and MPCTEST_BLOCK set the sample rate (default 48000)
+ * and block size (default 256).
  *
  *   cc -O2 -o mpctest src/osd/plugin/test/mpctest.c -Isrc/osd/plugin -ldl -lpthread
  *   ./mpctest ./libmameplugin_synths.so tx81z roms out.wav [seconds] [datapath] [--realtime]
@@ -35,8 +41,10 @@
 #include <string.h>
 #include <time.h>
 
-#define RATE 48000
-#define BLOCK 256
+/* MPCTEST_RATE and MPCTEST_BLOCK override these */
+#define MAX_BLOCK 4096
+static uint32_t RATE = 48000;
+static uint32_t BLOCK = 256;
 
 #define MAX_INSTANCES 16
 
@@ -182,7 +190,44 @@ static void *render(void *param)
 	const char *bootenv = getenv("MPCTEST_BOOT");
 	uint32_t const boot = (uint32_t)((bootenv ? atof(bootenv) : 8.0) * RATE), step = RATE / 2, length = RATE * 2 / 5;
 
-	float left[BLOCK], right[BLOCK];
+	/* SysEx messages to send first */
+	static uint8_t sysex[65536];
+	size_t sysex_size = 0;
+	uint32_t sysex_start[64], sysex_length[64], sysex_count = 0;
+	const char *sysexenv = getenv("MPCTEST_SYSEX");
+	if (sysexenv)
+	{
+		FILE *f = fopen(sysexenv, "rb");
+		if (!f)
+		{
+			perror(sysexenv);
+			j->result = 1;
+			fclose(wav);
+			return NULL;
+		}
+		sysex_size = fread(sysex, 1, sizeof(sysex), f);
+		fclose(f);
+		for (size_t i = 0; (i < sysex_size) && (sysex_count < 64); i++)
+		{
+			if (sysex[i] != 0xf0)
+				continue;
+			size_t end = i;
+			while ((end < sysex_size) && (sysex[end] != 0xf7))
+				end++;
+			if (end == sysex_size)
+				break;
+			sysex_start[sysex_count] = (uint32_t)i;
+			sysex_length[sysex_count++] = (uint32_t)(end + 1 - i);
+			i = end;
+		}
+		fprintf(stderr, "[%d] %u SysEx messages\n", j->index, sysex_count);
+	}
+	uint32_t const sysex_step = RATE / 5;
+	uint32_t const notes_start = boot + (sysex_count ? sysex_count * sysex_step + RATE : 0);
+	const char *noteenv = getenv("MPCTEST_NOTE");
+	int const held = noteenv ? atoi(noteenv) : -1;
+
+	float left[MAX_BLOCK], right[MAX_BLOCK];
 	float *out[2] = { left, right };
 	uint8_t msgs[8][3];
 	mp_midi_event events[8];
@@ -191,7 +236,9 @@ static void *render(void *param)
 
 	j->panel = getenv("MPCTEST_PANEL");
 	pthread_t panel_thread;
-	double click[6] = { -1, -1, -1, -1, -1, -1 };
+	double clicks[32][6];
+	uint32_t click_count = 0;
+	double const *click = NULL;   /* the click holding the button */
 	uint32_t buttons = 0;
 	if (j->panel)
 	{
@@ -205,10 +252,18 @@ static void *render(void *param)
 		const char *clickenv = getenv("MPCTEST_CLICK");
 		if (clickenv)
 		{
-			if (sscanf(clickenv, "%lf,%lf,%lf,%lf,%lf,%lf", &click[0], &click[1], &click[2], &click[3], &click[4], &click[5]) < 6)
+			for (const char *c = clickenv; c && *c && (click_count < 32); c = strchr(c, ';') ? strchr(c, ';') + 1 : NULL)
 			{
-				click[4] = click[0];
-				click[5] = click[1];
+				double *const k = clicks[click_count];
+				int const n = sscanf(c, "%lf,%lf,%lf,%lf,%lf,%lf", &k[0], &k[1], &k[2], &k[3], &k[4], &k[5]);
+				if (n < 4)
+					break;
+				if (n < 6)
+				{
+					k[4] = k[0];
+					k[5] = k[1];
+				}
+				click_count++;
 			}
 		}
 		pthread_create(&panel_thread, NULL, draw_panel, j);
@@ -218,12 +273,35 @@ static void *render(void *param)
 	{
 		uint32_t const start = b * BLOCK;
 		uint32_t count = 0;
-		for (uint32_t f = start; f < start + BLOCK; f++)
+		for (uint32_t f = start; (f < start + BLOCK) && (count < 8); f++)
 		{
-			if (f < boot)
+			if ((f >= boot) && (f < notes_start) && !((f - boot) % sysex_step) && ((f - boot) / sysex_step < sysex_count))
+			{
+				uint32_t const m = (f - boot) / sysex_step;
+				events[count].frame = f - start;
+				events[count].size = sysex_length[m];
+				events[count].data = sysex + sysex_start[m];
+				count++;
 				continue;
-			uint32_t const pos = (f - boot) % step;
-			uint8_t const note = notes[((f - boot) / step) % sizeof(notes)];
+			}
+			if (f < notes_start)
+				continue;
+			if (held >= 0)
+			{
+				if (f == notes_start)
+				{
+					msgs[count][0] = 0x90;
+					msgs[count][1] = (uint8_t)held;
+					msgs[count][2] = 100;
+					events[count].frame = f - start;
+					events[count].size = 3;
+					events[count].data = msgs[count];
+					count++;
+				}
+				continue;
+			}
+			uint32_t const pos = (f - notes_start) % step;
+			uint8_t const note = notes[((f - notes_start) / step) % sizeof(notes)];
 			if ((pos == 0) || (pos == length))
 			{
 				msgs[count][0] = (pos == 0) ? 0x90 : 0x80;
@@ -242,12 +320,17 @@ static void *render(void *param)
 		if (j->panel)
 		{
 			double const t = (double)start / RATE;
-			uint32_t const down = (click[2] >= 0) && (t >= click[2]) && (t < click[3]);
-			if (down || (down != buttons))
+			double const *active = NULL;
+			for (uint32_t c = 0; c < click_count; c++)
+				if ((t >= clicks[c][2]) && (t < clicks[c][3]))
+					active = clicks[c];
+			if (active || buttons)
 			{
-				double const f = down ? (t - click[2]) / (click[3] - click[2]) : 1.0;
-				mp_panel_pointer(inst, 0, (int32_t)(click[0] + f * (click[4] - click[0])), (int32_t)(click[1] + f * (click[5] - click[1])), down);
-				buttons = down;
+				double const *const k = active ? active : click;
+				double const f = active ? (t - k[2]) / (k[3] - k[2]) : 1.0;
+				mp_panel_pointer(inst, 0, (int32_t)(k[0] + f * (k[4] - k[0])), (int32_t)(k[1] + f * (k[5] - k[1])), active != NULL);
+				buttons = active != NULL;
+				click = active;
 			}
 		}
 
@@ -283,6 +366,12 @@ int main(int argc, char **argv)
 		fprintf(stderr, "usage: %s <library> <machine> <rompath> <out.wav> [seconds] [datapath] [--realtime]\n", argv[0]);
 		return 1;
 	}
+	if (getenv("MPCTEST_RATE"))
+		RATE = (uint32_t)atoi(getenv("MPCTEST_RATE"));
+	if (getenv("MPCTEST_BLOCK"))
+		BLOCK = (uint32_t)atoi(getenv("MPCTEST_BLOCK"));
+	if (!BLOCK || (BLOCK > MAX_BLOCK))
+		BLOCK = 256;
 
 	const char *libpath = argv[1];
 	const char *machine = argv[2];
