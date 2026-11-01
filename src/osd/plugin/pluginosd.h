@@ -190,6 +190,7 @@ private:
 	std::vector<std::uint32_t> m_pointer_buttons;
 	std::vector<attotime> m_pointer_changed;   // last button change per pointer
 	osd_ticks_t m_panel_last = 0;
+	u64 m_panel_fingerprint = 0;   // of the frame the GUI got last
 	plugin_layout_controls m_layout_controls;
 	bool m_layout_controls_attached = false;
 

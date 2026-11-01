@@ -125,6 +125,68 @@ private:
 	std::vector<uint8_t> m_record;
 };
 
+
+//============================================================
+//  panel_fingerprint - identifies what a primitive list
+//  shows, so unchanged frames needn't be drawn again
+//============================================================
+
+class panel_fingerprint
+{
+public:
+	template <typename T> void add(T const &value) { add(&value, sizeof(value)); }
+
+	void add(void const *data, std::size_t size)
+	{
+		u8 const *bytes = reinterpret_cast<u8 const *>(data);
+		for (std::size_t i = 0; i < size; i++)
+			m_hash = (m_hash ^ bytes[i]) * 0x100000001b3ULL;
+	}
+
+	u64 value() const { return m_hash; }
+
+private:
+	u64 m_hash = 0xcbf29ce484222325ULL;   // FNV-1a
+};
+
+u64 fingerprint(render_primitive_list &list)
+{
+	panel_fingerprint result;
+	list.acquire_lock();
+	for (render_primitive const &prim : list)
+	{
+		result.add(prim.type);
+		result.add(prim.bounds);
+		result.add(prim.color);
+		result.add(prim.flags);
+		render_texinfo const &tex = prim.texture;
+		if (!tex.base)
+			continue;
+		result.add(tex.width);
+		result.add(tex.height);
+		if (!PRIMFLAG_GET_SCREENTEX(prim.flags))
+		{
+			// layout elements keep their image and sequence ID while the
+			// scaled image is reused
+			result.add(tex.base);
+			result.add(tex.seqid);
+			continue;
+		}
+
+		// screens get a new sequence ID each time and alternate between
+		// two bitmaps, but are small on the machines this is for:
+		// compare their pixels instead
+		u32 const bytes = (PRIMFLAG_GET_TEXFORMAT(prim.flags) == TEXFORMAT_PALETTE16 || PRIMFLAG_GET_TEXFORMAT(prim.flags) == TEXFORMAT_YUY16) ? 2 : 4;
+		u8 const *row = reinterpret_cast<u8 const *>(tex.base);
+		for (u32 y = 0; y < tex.height; y++, row += std::size_t(tex.rowpixels) * bytes)
+			result.add(row, std::size_t(tex.width) * bytes);
+		if (tex.palette)
+			result.add(tex.palette, std::size_t(tex.palette_length) * sizeof(rgb_t));
+	}
+	list.release_lock();
+	return result.value();
+}
+
 } // anonymous namespace
 
 
@@ -423,13 +485,28 @@ void plugin_osd_interface::update_panel()
 		return;
 	m_panel_last = now;
 
+	// never rebuild a list while the GUI draws one; try again next time
+	// rather than hold up the emulation
+	std::unique_lock<std::mutex> drawing(panel.draw_mutex, std::try_to_lock);
+	if (!drawing)
+		return;
 	render_primitive_list &list = m_target->get_primitives();
 
+	// drawing the panel in software is costly, so the GUI is only told
+	// about a frame that shows something new; the list is passed on
+	// anyway, so the one the GUI can draw is never the one rebuilt next
+	u64 const shown = fingerprint(list);
+	bool const changed = resized || (shown != m_panel_fingerprint);
+	m_panel_fingerprint = shown;
+
+	// draw() takes draw_mutex while holding mutex
+	drawing.unlock();
 	std::lock_guard<std::mutex> lock(panel.mutex);
 	panel.list = &list;
 	panel.list_width = width;
 	panel.list_height = height;
-	panel.serial++;
+	if (changed)
+		panel.serial++;
 }
 
 osd::audio_info plugin_osd_interface::sound_get_information()
