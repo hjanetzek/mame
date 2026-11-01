@@ -31,14 +31,18 @@
  * of the first instance at the end, one file per device named like
  * MAME's NVRAM files, e.g. to make a data folder's starting NVRAM.
  * MPCTEST_OPTIONS=name=value;... passes extra MAME options, and
- * MPCTEST_RELOAD_LAYOUT=1 reloads changed layout files.
+ * MPCTEST_RELOAD_LAYOUT=1 reloads changed layout files.  With
+ * MPCTEST_LAYOUT=1 (and MPCTEST_PANEL) a frame composed from the layout
+ * description (mp_layout_*) is written next to each panel frame as
+ * <prefix>.layout.<i>.<second>.ppm, with the number of pixels that differ.
  *
- *   cc -O2 -o mpctest src/osd/plugin/test/mpctest.c -Isrc/osd/plugin -ldl -lpthread
+ *   cc -O2 -o mpctest src/osd/plugin/test/mpctest.c -Isrc/osd/plugin -ldl -lpthread -lm
  *   ./mpctest ./libmameplugin_synths.so tx81z roms out.wav [seconds] [datapath] [--realtime]
  */
 #include "mame_plugin.h"
 
 #include <dlfcn.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,6 +75,10 @@ typedef void (*mp_panel_size_fn)(mp_instance *, uint32_t *, uint32_t *);
 typedef void (*mp_panel_set_size_fn)(mp_instance *, uint32_t, uint32_t);
 typedef uint64_t (*mp_panel_frame_fn)(mp_instance *, void *, uint32_t, uint32_t, uint64_t);
 typedef void (*mp_panel_pointer_fn)(mp_instance *, uint32_t, int32_t, int32_t, uint32_t);
+typedef uint64_t (*mp_layout_describe_fn)(mp_instance *, mp_layout_info *, mp_layout_element *, uint32_t, mp_layout_item *, uint32_t);
+typedef uint64_t (*mp_layout_states_fn)(mp_instance *, uint64_t, mp_layout_item_state *, uint32_t, uint64_t *);
+typedef int (*mp_layout_element_image_fn)(mp_instance *, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, void *);
+typedef uint64_t (*mp_layout_screen_fn)(mp_instance *, uint32_t, uint64_t, uint32_t *, uint32_t *, void *, size_t);
 
 static mp_build_version_fn p_mp_build_version;
 static mp_machine_count_fn p_mp_machine_count;
@@ -87,6 +95,10 @@ static mp_panel_size_fn p_mp_panel_size;
 static mp_panel_set_size_fn p_mp_panel_set_size;
 static mp_panel_frame_fn p_mp_panel_frame;
 static mp_panel_pointer_fn p_mp_panel_pointer;
+static mp_layout_describe_fn p_mp_layout_describe;
+static mp_layout_states_fn p_mp_layout_states;
+static mp_layout_element_image_fn p_mp_layout_element_image;
+static mp_layout_screen_fn p_mp_layout_screen;
 
 /* call through the pointers resolved with dlsym */
 #define mp_build_version p_mp_build_version
@@ -104,6 +116,10 @@ static mp_panel_pointer_fn p_mp_panel_pointer;
 #define mp_panel_set_size p_mp_panel_set_size
 #define mp_panel_frame p_mp_panel_frame
 #define mp_panel_pointer p_mp_panel_pointer
+#define mp_layout_describe p_mp_layout_describe
+#define mp_layout_states p_mp_layout_states
+#define mp_layout_element_image p_mp_layout_element_image
+#define mp_layout_screen p_mp_layout_screen
 
 typedef struct job
 {
@@ -146,25 +162,174 @@ static void write_ppm(const char *prefix, int index, uint32_t second, const uint
 	fclose(f);
 }
 
-/* draws the panel like a GUI would, writing a frame each second */
+/* as MAME's render_round_nearest */
+static int round_nearest(float f) { return (int)floorf(f + 0.5f); }
+
+static uint8_t clamp8(int v) { return (uint8_t)(v < 0 ? 0 : v > 255 ? 255 : v); }
+
+/* blends one pixel as MAME's software renderer does */
+static void blend(uint8_t *d, const uint8_t *s, uint32_t mode, const mp_layout_item_state *st)
+{
+	int const r = (int)(s[0] * st->r), g = (int)(s[1] * st->g), b = (int)(s[2] * st->b);
+	int const a = (int)(s[3] * st->a);
+	switch (mode)
+	{
+	case MP_LAYOUT_BLEND_NONE:
+		d[0] = clamp8(r); d[1] = clamp8(g); d[2] = clamp8(b);
+		break;
+	case MP_LAYOUT_BLEND_ALPHA:
+		if (a)
+		{
+			d[0] = clamp8((r * a + d[0] * (256 - a)) >> 8);
+			d[1] = clamp8((g * a + d[1] * (256 - a)) >> 8);
+			d[2] = clamp8((b * a + d[2] * (256 - a)) >> 8);
+		}
+		break;
+	case MP_LAYOUT_BLEND_MULTIPLY:
+		d[0] = clamp8((r * d[0]) >> 8); d[1] = clamp8((g * d[1]) >> 8); d[2] = clamp8((b * d[2]) >> 8);
+		break;
+	case MP_LAYOUT_BLEND_ADD:
+		d[0] = clamp8(d[0] + ((r * a) >> 8)); d[1] = clamp8(d[1] + ((g * a) >> 8)); d[2] = clamp8(d[2] + ((b * a) >> 8));
+		break;
+	}
+}
+
+/* composes the panel from the layout description, as a GUI drawing the
+   layout itself would; returns 0 if there is no description yet */
+static int compose_layout(mp_instance *inst, uint8_t *out, uint32_t width, uint32_t height)
+{
+	mp_layout_info info;
+	mp_layout_describe(inst, &info, NULL, 0, NULL, 0);
+	if (!info.serial || !info.item_count)
+		return 0;
+	mp_layout_item *const items = calloc(info.item_count, sizeof(*items));
+	mp_layout_item_state *const states = calloc(info.item_count, sizeof(*states));
+	mp_layout_describe(inst, &info, NULL, 0, items, info.item_count);
+	uint64_t layout_serial = 0;
+	if (!mp_layout_states(inst, 0, states, info.item_count, &layout_serial) || (layout_serial != info.serial))
+	{
+		free(items);
+		free(states);
+		return 0;
+	}
+
+	/* the view fills the frame, as MAME's panel target does; a GUI would
+	   size its canvas from info.aspect */
+	float const visw = (float)width, vish = (float)height, ox = 0.0f, oy = 0.0f;
+
+	memset(out, 0, (size_t)width * height * 4);
+	for (uint32_t i = 0; i < info.item_count; i++)
+	{
+		const mp_layout_item_state *const st = &states[i];
+		int const x0 = round_nearest(ox + st->x0 * visw), y0 = round_nearest(oy + st->y0 * vish);
+		int const w = round_nearest((st->x1 - st->x0) * visw), h = round_nearest((st->y1 - st->y0) * vish);
+		if (w <= 0 || h <= 0 || (items[i].flags & MP_LAYOUT_SCROLLED))
+			continue;
+		uint8_t *image = NULL;
+		uint32_t iw = (uint32_t)w, ih = (uint32_t)h;
+		if (items[i].element != MP_LAYOUT_NO_ELEMENT)
+		{
+			image = malloc((size_t)w * h * 4);
+			if (!mp_layout_element_image(inst, items[i].element, (uint32_t)st->state, items[i].orientation, iw, ih, image))
+			{
+				free(image);
+				continue;
+			}
+		}
+		else
+		{
+			uint32_t sw = 0, sh = 0;
+			mp_layout_screen(inst, items[i].screen, ~0ULL, &sw, &sh, NULL, 0);
+			if (!sw || !sh)
+				continue;
+			image = malloc((size_t)sw * sh * 4);
+			mp_layout_screen(inst, items[i].screen, 0, &sw, &sh, image, (size_t)sw * sh * 4);
+			iw = sw;
+			ih = sh;
+		}
+		for (int y = 0; y < h; y++)
+		{
+			if (y0 + y < 0 || y0 + y >= (int)height)
+				continue;
+			for (int x = 0; x < w; x++)
+			{
+				if (x0 + x < 0 || x0 + x >= (int)width)
+					continue;
+				uint8_t *const d = out + ((size_t)(y0 + y) * width + x0 + x) * 4;
+				if (iw == (uint32_t)w && ih == (uint32_t)h)
+				{
+					/* element images have the item's size */
+					blend(d, image + ((size_t)y * iw + x) * 4, items[i].blend, st);
+					continue;
+				}
+
+				/* screens are scaled like the panel's software renderer
+				   does (rendersw.hxx): nearest texel from the first
+				   pixel's centre, stepping in 16.16 fixed point by the
+				   texture size over the unrounded bounds */
+				int const dudx = round_nearest(65536.0f * (float)iw / ((st->x1 - st->x0) * visw));
+				int const dvdy = round_nearest(65536.0f * (float)ih / ((st->y1 - st->y0) * vish));
+				uint32_t u = (uint32_t)((dudx / 2 + x * dudx) >> 16), v = (uint32_t)((dvdy / 2 + y * dvdy) >> 16);
+				u = u < iw ? u : iw - 1;
+				v = v < ih ? v : ih - 1;
+				blend(d, image + ((size_t)v * iw + u) * 4, items[i].blend, st);
+			}
+		}
+		free(image);
+	}
+	for (size_t p = 0; p < (size_t)width * height; p++)
+		out[p * 4 + 3] = 0xff;
+	free(items);
+	free(states);
+	return 1;
+}
+
+/* draws the panel like a GUI would, writing a frame each second; with
+   MPCTEST_LAYOUT also one composed from the layout description, and how
+   much the two differ */
 static void *draw_panel(void *param)
 {
 	job *const j = (job *)param;
 	uint8_t *const pixels = calloc((size_t)j->pw * j->ph, 4);
+	int const layout = getenv("MPCTEST_LAYOUT") != NULL;
+	uint8_t *const composed = layout ? calloc((size_t)j->pw * j->ph, 4) : NULL;
 	uint64_t serial = 0;
 	uint32_t written = 0;
 	struct timespec pause = { 0, 16000000 };
 	while (!__atomic_load_n(&j->finished, __ATOMIC_ACQUIRE))
 	{
 		serial = mp_panel_frame(j->inst, pixels, j->pw, j->ph, serial);
+		if (layout)
+			mp_layout_describe(j->inst, NULL, NULL, 0, NULL, 0);   /* starts capturing */
 		uint32_t const second = __atomic_load_n(&j->frames, __ATOMIC_ACQUIRE) / RATE;
 		if (second != written)
 		{
 			write_ppm(j->panel, j->index, second, pixels, j->pw, j->ph);
+			if (layout && compose_layout(j->inst, composed, j->pw, j->ph))
+			{
+				char prefix[1100];
+				snprintf(prefix, sizeof(prefix), "%s.layout", j->panel);
+				write_ppm(prefix, j->index, second, composed, j->pw, j->ph);
+				size_t differing = 0, total = (size_t)j->pw * j->ph;
+				int maxdiff = 0;
+				for (size_t p = 0; p < total; p++)
+				{
+					int d = 0;
+					for (int c = 0; c < 3; c++)
+					{
+						int const e = abs((int)pixels[p * 4 + c] - (int)composed[p * 4 + c]);
+						d = e > d ? e : d;
+					}
+					differing += d > 8;
+					maxdiff = d > maxdiff ? d : maxdiff;
+				}
+				fprintf(stderr, "[%d] layout at %us: %zu of %zu pixels differ by more than 8 (max %d)\n", j->index, second, differing, total, maxdiff);
+			}
 			written = second;
 		}
 		nanosleep(&pause, NULL);
 	}
+	free(composed);
 	free(pixels);
 	return NULL;
 }
@@ -482,6 +647,10 @@ int main(int argc, char **argv)
 	LOAD(mp_panel_set_size)
 	LOAD(mp_panel_frame)
 	LOAD(mp_panel_pointer)
+	LOAD(mp_layout_describe)
+	LOAD(mp_layout_states)
+	LOAD(mp_layout_element_image)
+	LOAD(mp_layout_screen)
 
 	printf("MAME %s, MIDI machines:", mp_build_version());
 	for (uint32_t i = 0; i < mp_machine_count(); i++)

@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include "mame_plugin.h"
 #include "pluginlayout.h"
 #include "pluginmidi.h"
 #include "spscqueue.h"
@@ -30,7 +31,11 @@
 #define PLUGIN_MIDI_PORT_NAME "plugin"
 
 
+class layout_element;
+class layout_view;
+class layout_view_item;
 class render_primitive_list;
+class screen_device;
 
 
 // the machine's layout rendered for a plugin GUI: the emulation thread
@@ -74,6 +79,30 @@ struct plugin_panel
 	std::uint32_t list_height = 0;
 	std::uint64_t serial = 0;
 	std::uint64_t fetched = 0;   // serial of the list the GUI last drew
+
+	// the layout as the host draws it itself (mp_layout_*), captured by
+	// the emulation thread once the host asked for it
+	struct layout_screen
+	{
+		std::uint32_t width = 0;
+		std::uint32_t height = 0;
+		std::vector<std::uint8_t> rgba;
+		std::uint64_t serial = 0;
+	};
+
+	// GUI thread: draw an element of the layout, holding draw_mutex like
+	// draw(), so the emulation thread isn't building a list meanwhile
+	bool draw_element(std::uint32_t element, std::uint32_t state, std::uint32_t orientation, std::uint32_t width, std::uint32_t height, void *rgba);
+
+	bool layout_requested = false;
+	std::uint64_t layout_serial = 0;
+	float layout_aspect = 1.0f;
+	std::vector<mp_layout_element> layout_elements;
+	std::vector<layout_element *> layout_element_ptrs;   // of the target, cleared before it goes away
+	std::vector<mp_layout_item> layout_items;
+	std::vector<mp_layout_item_state> layout_states;
+	std::uint64_t layout_states_serial = 0;
+	std::vector<layout_screen> layout_screens;
 };
 
 
@@ -195,6 +224,16 @@ private:
 	std::vector<attotime> m_pointer_changed;   // last button change per pointer
 	osd_ticks_t m_panel_last = 0;
 	u64 m_panel_fingerprint = 0;   // of the frame the GUI got last
+
+	// the layout for the host (plugin_panel::layout_*)
+	void capture_layout();
+	layout_view *m_layout_view = nullptr;
+	std::vector<layout_view_item *> m_layout_item_ptrs;
+	std::vector<screen_device *> m_layout_screen_ptrs;
+	std::vector<mp_layout_item_state> m_layout_states;
+	std::vector<std::vector<std::uint8_t>> m_layout_screen_images;
+	std::uint64_t m_layout_counter = 0;   // for the serials, which never repeat
+	osd_ticks_t m_layout_captured = 0;
 
 	// layout development (plugin_io::reload_layout)
 	void create_panel_target();

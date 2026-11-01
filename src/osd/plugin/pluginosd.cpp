@@ -26,7 +26,9 @@
 #include <algorithm>
 #include <bit>
 #include <chrono>
+#include <cstring>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 #include <cstdio>
 
@@ -241,6 +243,44 @@ std::uint64_t plugin_panel::draw(void *pixels, std::uint32_t width, std::uint32_
 	return current;
 }
 
+bool plugin_panel::draw_element(std::uint32_t element, std::uint32_t state, std::uint32_t orientation, std::uint32_t width, std::uint32_t height, void *rgba)
+{
+	std::unique_lock<std::mutex> lock(mutex);
+	if ((element >= layout_element_ptrs.size()) || !width || !height)
+		return false;
+	layout_element &elem = *layout_element_ptrs[element];
+	std::unique_lock<std::mutex> drawing(draw_mutex);
+	lock.unlock();
+
+	// the element is drawn as its texture, which an item with this
+	// orientation shows rotated or flipped, as render_target does
+	bool const swap = orientation & ORIENTATION_SWAP_XY;
+	u32 const texwidth = swap ? height : width;
+	u32 const texheight = swap ? width : height;
+	bitmap_argb32 bitmap(texwidth, texheight);
+	elem.draw_state(bitmap, int(state));
+
+	u8 *dest = reinterpret_cast<u8 *>(rgba);
+	for (u32 y = 0; y < height; y++)
+	{
+		for (u32 x = 0; x < width; x++)
+		{
+			u32 u = swap ? y : x;
+			u32 v = swap ? x : y;
+			if (orientation & (swap ? ORIENTATION_FLIP_Y : ORIENTATION_FLIP_X))
+				u = texwidth - 1 - u;
+			if (orientation & (swap ? ORIENTATION_FLIP_X : ORIENTATION_FLIP_Y))
+				v = texheight - 1 - v;
+			rgb_t const pixel = bitmap.pix(v, u);
+			*dest++ = pixel.r();
+			*dest++ = pixel.g();
+			*dest++ = pixel.b();
+			*dest++ = pixel.a();
+		}
+	}
+	return true;
+}
+
 void plugin_panel::detach()
 {
 	{
@@ -334,14 +374,144 @@ std::string plugin_osd_interface::layout_files_state() const
 	return result;
 }
 
+void plugin_osd_interface::capture_layout()
+{
+	plugin_panel &panel = m_io.panel;
+	layout_view &view = m_target->current_view();
+	auto const &visible = view.visible_items();
+
+	// describe the view again when it or its visible items change
+	bool same = (&view == m_layout_view) && (visible.size() == m_layout_item_ptrs.size());
+	for (std::size_t i = 0; same && (i < visible.size()); i++)
+		same = &visible[i].get() == m_layout_item_ptrs[i];
+	if (!same)
+	{
+		m_layout_view = &view;
+		m_layout_item_ptrs.clear();
+		m_layout_screen_ptrs.clear();
+		std::vector<layout_element *> elements;
+		std::vector<mp_layout_element> element_descs;
+		std::vector<mp_layout_item> items;
+		std::unordered_map<layout_element *, u32> element_index;
+		for (layout_view_item &item : visible)
+		{
+			m_layout_item_ptrs.push_back(&item);
+			// screens default to the blend mode of their own quads, which
+			// replace what's below
+			int const blend = (item.blend_mode() < 0) ? BLENDMODE_NONE : item.blend_mode();
+			mp_layout_item desc{ MP_LAYOUT_NO_ELEMENT, 0, u32(blend), u32(item.orientation()), 0 };
+			if (item.screen())
+			{
+				desc.screen = u32(m_layout_screen_ptrs.size());
+				m_layout_screen_ptrs.push_back(dynamic_cast<screen_device *>(item.screen()));
+			}
+			else if (item.element())
+			{
+				auto const found = element_index.emplace(item.element(), u32(elements.size()));
+				if (found.second)
+				{
+					elements.push_back(item.element());
+					element_descs.push_back(mp_layout_element{ u32(item.element()->state_count()), u32(std::max(item.element()->default_state(), 0)) });
+				}
+				desc.element = found.first->second;
+			}
+			if (item.has_input())
+				desc.flags |= MP_LAYOUT_CLICKABLE;
+			if (item.clickthrough())
+				desc.flags |= MP_LAYOUT_CLICKTHROUGH;
+			if (item.bounds_animated() || item.color_animated())
+				desc.flags |= MP_LAYOUT_ANIMATED;
+			if (item.scroll_wrap_x() || item.scroll_wrap_y() || (item.scroll_size_x() < 1.0f) || (item.scroll_size_y() < 1.0f))
+				desc.flags |= MP_LAYOUT_SCROLLED;
+			items.push_back(desc);
+		}
+		m_layout_states.clear();
+		m_layout_screen_images.assign(m_layout_screen_ptrs.size(), std::vector<u8>());
+
+		std::lock_guard<std::mutex> lock(panel.mutex);
+		panel.layout_serial = ++m_layout_counter;
+		panel.layout_aspect = view.effective_aspect();
+		panel.layout_elements = std::move(element_descs);
+		panel.layout_element_ptrs = std::move(elements);
+		panel.layout_items = std::move(items);
+		panel.layout_states.clear();
+		panel.layout_screens.assign(m_layout_screen_ptrs.size(), plugin_panel::layout_screen());
+	}
+
+	// the items' states, bounds and colours, as their bindings give them
+	std::vector<mp_layout_item_state> states;
+	states.reserve(m_layout_item_ptrs.size());
+	for (layout_view_item *item : m_layout_item_ptrs)
+	{
+		render_bounds const bounds = item->bounds();
+		render_color const color = item->color();
+		states.push_back(mp_layout_item_state{
+				item->screen() ? 0 : std::max(item->element_state(), 0),
+				bounds.x0, bounds.y0, bounds.x1, bounds.y1,
+				color.a, color.r, color.g, color.b });
+	}
+	if ((states.size() != m_layout_states.size()) || std::memcmp(states.data(), m_layout_states.data(), states.size() * sizeof(states[0])))
+	{
+		m_layout_states = states;
+		std::lock_guard<std::mutex> lock(panel.mutex);
+		panel.layout_states = std::move(states);
+		panel.layout_states_serial = ++m_layout_counter;
+	}
+
+	// the screens' visible areas, opaque, from the last completed frame
+	// (the one the screen's texture shows, not the one being drawn)
+	for (std::size_t i = 0; i < m_layout_screen_ptrs.size(); i++)
+	{
+		screen_device *const screen = m_layout_screen_ptrs[i];
+		if (!screen)
+			continue;
+		screen_bitmap &bitmap = screen->curbitmap();
+		if (!bitmap.valid())
+			continue;
+		rectangle const visarea = screen->visible_area() & bitmap.cliprect();
+		u32 const width = visarea.width();
+		u32 const height = visarea.height();
+		std::vector<u8> image(std::size_t(width) * height * 4);
+		u8 *dest = image.data();
+		rgb_t const *const palette = ((bitmap.format() == BITMAP_FORMAT_IND16) && screen->has_palette()) ? screen->palette().palette()->entry_list_adjusted() : nullptr;
+		for (s32 y = visarea.top(); y <= visarea.bottom(); y++)
+		{
+			for (s32 x = visarea.left(); x <= visarea.right(); x++)
+			{
+				rgb_t const pixel = (bitmap.format() == BITMAP_FORMAT_IND16)
+						? (palette ? palette[bitmap.as_ind16().pix(y, x)] : rgb_t::black())
+						: rgb_t(bitmap.as_rgb32().pix(y, x));
+				*dest++ = pixel.r();
+				*dest++ = pixel.g();
+				*dest++ = pixel.b();
+				*dest++ = 0xff;
+			}
+		}
+		if (image == m_layout_screen_images[i])
+			continue;
+		m_layout_screen_images[i] = image;
+		std::lock_guard<std::mutex> lock(panel.mutex);
+		plugin_panel::layout_screen &shared = panel.layout_screens[i];
+		shared.width = width;
+		shared.height = height;
+		shared.rgba = std::move(image);
+		shared.serial = ++m_layout_counter;
+	}
+}
+
 void plugin_osd_interface::reload_layout()
 {
-	// the GUI must not draw a list of the target that goes away
+	// the GUI must not draw a list or an element of the target that goes
+	// away
 	{
 		std::lock_guard<std::mutex> lock(m_io.panel.mutex);
 		std::lock_guard<std::mutex> drawing(m_io.panel.draw_mutex);
 		m_io.panel.list = nullptr;
+		m_io.panel.layout_element_ptrs.clear();
 	}
+	m_layout_view = nullptr;
+	m_layout_item_ptrs.clear();
+	m_layout_screen_ptrs.clear();
 
 	m_layout_controls.detach();
 	m_layout_controls_attached = false;
@@ -483,14 +653,27 @@ void plugin_osd_interface::update_panel()
 
 	plugin_panel &panel = m_io.panel;
 	u32 width, height;
-	bool consumed;
+	bool consumed, layout_requested;
 	{
 		std::lock_guard<std::mutex> lock(panel.mutex);
 		width = panel.width;
 		height = panel.height;
 		consumed = panel.fetched == panel.serial;
+		layout_requested = panel.layout_requested;
 		m_pointer_events.insert(m_pointer_events.end(), panel.pointers.begin(), panel.pointers.end());
 		panel.pointers.clear();
+	}
+
+	// the layout for a host that draws the panel itself, at the rate
+	// frames are built
+	if (layout_requested && (machine().phase() == machine_phase::RUNNING))
+	{
+		osd_ticks_t const now = osd_ticks();
+		if ((now - m_layout_captured) >= (osd_ticks_per_second() / PANEL_MAX_FPS))
+		{
+			m_layout_captured = now;
+			capture_layout();
+		}
 	}
 
 	if (!width || !height)

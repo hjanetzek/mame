@@ -1642,6 +1642,29 @@ render_texture *layout_element::state_texture(int state)
 
 
 //-------------------------------------------------
+//  draw_state - draw the element in a state, as
+//  element_scale does for its textures
+//-------------------------------------------------
+
+void layout_element::draw_state(bitmap_argb32 &dest, int state)
+{
+	if (m_foldhigh && (state & ~m_statemask))
+		state = (state & m_statemask) | (((m_statemask << 1) | 1) & ~m_statemask);
+	else
+		state &= m_statemask;
+
+	dest.fill(0);
+	for (auto const &curcomp : m_complist)
+	{
+		if ((state & curcomp->statemask()) == curcomp->stateval())
+			curcomp->draw(machine(), dest, state);
+	}
+	if (!m_draw.isnull())
+		m_draw(state, dest);
+}
+
+
+//-------------------------------------------------
 //  set_draw_callback - set handler called after
 //  drawing components
 //-------------------------------------------------

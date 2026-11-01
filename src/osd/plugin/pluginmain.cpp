@@ -798,4 +798,59 @@ void mp_panel_pointer_leave(mp_instance *instance, uint32_t id)
 	push_pointer(instance, plugin_panel::pointer_event{ id, -1, -1, 0, true });
 }
 
+uint64_t mp_layout_describe(mp_instance *instance, mp_layout_info *info, mp_layout_element *elements, uint32_t max_elements, mp_layout_item *items, uint32_t max_items)
+{
+	plugin_panel &panel = instance->io.panel;
+	std::lock_guard<std::mutex> lock(panel.mutex);
+	panel.layout_requested = true;
+	if (info)
+	{
+		info->serial = panel.layout_serial;
+		info->aspect = panel.layout_aspect;
+		info->element_count = uint32_t(panel.layout_elements.size());
+		info->item_count = uint32_t(panel.layout_items.size());
+		info->screen_count = uint32_t(panel.layout_screens.size());
+	}
+	if (elements)
+		std::copy_n(panel.layout_elements.begin(), std::min<std::size_t>(max_elements, panel.layout_elements.size()), elements);
+	if (items)
+		std::copy_n(panel.layout_items.begin(), std::min<std::size_t>(max_items, panel.layout_items.size()), items);
+	return panel.layout_serial;
+}
+
+uint64_t mp_layout_states(mp_instance *instance, uint64_t serial, mp_layout_item_state *states, uint32_t max_states, uint64_t *layout_serial)
+{
+	plugin_panel &panel = instance->io.panel;
+	std::lock_guard<std::mutex> lock(panel.mutex);
+	if (layout_serial)
+		*layout_serial = panel.layout_serial;
+	if ((serial == panel.layout_states_serial) || panel.layout_states.empty())
+		return serial;
+	if (states)
+		std::copy_n(panel.layout_states.begin(), std::min<std::size_t>(max_states, panel.layout_states.size()), states);
+	return panel.layout_states_serial;
+}
+
+int mp_layout_element_image(mp_instance *instance, uint32_t element, uint32_t state, uint32_t orientation, uint32_t width, uint32_t height, void *rgba)
+{
+	return instance->io.panel.draw_element(element, state, orientation, width, height, rgba) ? 1 : 0;
+}
+
+uint64_t mp_layout_screen(mp_instance *instance, uint32_t screen, uint64_t serial, uint32_t *width, uint32_t *height, void *rgba, size_t size)
+{
+	plugin_panel &panel = instance->io.panel;
+	std::lock_guard<std::mutex> lock(panel.mutex);
+	if (screen >= panel.layout_screens.size())
+		return serial;
+	plugin_panel::layout_screen const &shared = panel.layout_screens[screen];
+	if (width)
+		*width = shared.width;
+	if (height)
+		*height = shared.height;
+	if ((serial == shared.serial) || !shared.serial || !rgba || (size < shared.rgba.size()))
+		return serial;
+	std::copy(shared.rgba.begin(), shared.rgba.end(), reinterpret_cast<uint8_t *>(rgba));
+	return shared.serial;
+}
+
 } // extern "C"

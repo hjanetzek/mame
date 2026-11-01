@@ -82,7 +82,12 @@ public:
 	// getters
 	running_machine &machine() const { return m_machine; }
 	int default_state() const { return m_defstate; }
+	int state_count() const { return int(m_elemtex.size()); }
 	render_texture *state_texture(int state);
+
+	// draws the element in a state into a bitmap of the size wanted, as
+	// its textures are drawn
+	void draw_state(bitmap_argb32 &dest, int state);
 
 	// set handlers
 	void set_draw_callback(draw_delegate &&handler);

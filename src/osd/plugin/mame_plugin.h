@@ -41,7 +41,7 @@ extern "C" {
 #define MP_API __attribute__((visibility("default")))
 #endif
 
-#define MP_API_VERSION 7
+#define MP_API_VERSION 8
 
 typedef struct mp_instance mp_instance;
 
@@ -150,6 +150,81 @@ MP_API uint64_t mp_panel_frame(mp_instance *instance, void *pixels, uint32_t wid
    are below 64. */
 MP_API void mp_panel_pointer(mp_instance *instance, uint32_t id, int32_t x, int32_t y, uint32_t buttons);
 MP_API void mp_panel_pointer_leave(mp_instance *instance, uint32_t id);
+
+/* Layout: the machine's layout as MAME resolved it, for a host that draws
+   the panel itself.  The current view is a list of items in drawing
+   order; each shows an element (whose image per state the library draws)
+   or a screen.  The emulation thread captures the items' states, bounds
+   and colours and the screens' pixels while the host calls mp_process;
+   these calls take the same lock as the panel calls and should be made
+   from one thread.  Capturing starts with the first mp_layout_describe
+   call.  Images are R, G, B, A bytes, not premultiplied. */
+
+/* mp_layout_item::flags */
+#define MP_LAYOUT_CLICKABLE    1   /* clicking it presses an input */
+#define MP_LAYOUT_CLICKTHROUGH 2   /* clicks also reach the items below */
+#define MP_LAYOUT_ANIMATED     4   /* its bounds or colour change with its state */
+#define MP_LAYOUT_SCROLLED     8   /* shows a scrolled window of its element: not described here */
+
+/* blend modes, as MAME's */
+#define MP_LAYOUT_BLEND_NONE     0   /* replace */
+#define MP_LAYOUT_BLEND_ALPHA    1
+#define MP_LAYOUT_BLEND_MULTIPLY 2   /* multiply RGB with the image's, after applying its alpha */
+#define MP_LAYOUT_BLEND_ADD      3   /* add the image's RGB times its alpha */
+
+#define MP_LAYOUT_NO_ELEMENT 0xffffffffu
+
+typedef struct mp_layout_info
+{
+	uint64_t serial;             /* changes with the view or the items shown */
+	float aspect;                /* width / height of the view */
+	uint32_t element_count;
+	uint32_t item_count;
+	uint32_t screen_count;
+} mp_layout_info;
+
+typedef struct mp_layout_element
+{
+	uint32_t state_count;        /* states are 0 .. state_count - 1 */
+	uint32_t default_state;
+} mp_layout_element;
+
+typedef struct mp_layout_item
+{
+	uint32_t element;            /* index of its element, MP_LAYOUT_NO_ELEMENT for a screen */
+	uint32_t screen;             /* index of its screen, if it shows one */
+	uint32_t blend;              /* MP_LAYOUT_BLEND_* */
+	uint32_t orientation;        /* MAME's ORIENTATION_* bits: 1 flip x, 2 flip y, 4 swap x and y */
+	uint32_t flags;              /* MP_LAYOUT_* */
+} mp_layout_item;
+
+typedef struct mp_layout_item_state
+{
+	int32_t state;               /* the element's state to show */
+	float x0, y0, x1, y1;        /* bounds, 0..1 across the view */
+	float a, r, g, b;            /* colour multiplied with the image */
+} mp_layout_item_state;
+
+/* the current view: fills info and as many elements and items as fit,
+   returns the serial (also in info->serial); call with NULL arrays to get
+   the counts first */
+MP_API uint64_t mp_layout_describe(mp_instance *instance, mp_layout_info *info, mp_layout_element *elements, uint32_t max_elements, mp_layout_item *items, uint32_t max_items);
+
+/* the items' current states, in the order of mp_layout_describe, if they
+   differ from those with the given serial; returns their serial, or the
+   passed one if nothing changed.  *layout_serial receives the serial of
+   the description they belong to. */
+MP_API uint64_t mp_layout_states(mp_instance *instance, uint64_t serial, mp_layout_item_state *states, uint32_t max_states, uint64_t *layout_serial);
+
+/* draws an element in a state at width x height pixels, oriented as an
+   item with that orientation shows it; returns 0 if there is no such
+   element */
+MP_API int mp_layout_element_image(mp_instance *instance, uint32_t element, uint32_t state, uint32_t orientation, uint32_t width, uint32_t height, void *rgba);
+
+/* a screen's current image at its own size, if it differs from the one
+   with the given serial and fits size bytes; *width and *height receive
+   its size either way.  Returns its serial, or the passed one. */
+MP_API uint64_t mp_layout_screen(mp_instance *instance, uint32_t screen, uint64_t serial, uint32_t *width, uint32_t *height, void *rgba, size_t size);
 
 /* drain and return messages logged by the emulation (errors and
    warnings), or NULL if there are none; the pointer is valid until the
