@@ -127,6 +127,7 @@ public:
 		, m_voicebank_view(*this, "voicebank_view")
 		, m_panel(*this, "K%u", 0U)
 		, m_panel_led(*this, "K%u_%02u", 0U, 0U)
+		, m_matrix_page(*this, "matrix_page")
 		, m_drawbars(*this, "DB%u", 0U)
 		, m_wheel1(*this, "WHEEL1")
 		, m_wheel2(*this, "WHEEL2")
@@ -159,6 +160,8 @@ private:
 	void panout_w(uint8_t data);
 	void panclk_w(uint8_t data);
 	void panres_w(uint8_t data);
+	void update_panel_leds();
+	TIMER_CALLBACK_MEMBER(panel_burst_end);
 	void potsel_w(uint8_t data);
 	void crar_w(uint8_t data);
 	void keyb_w(offs_t offset, uint8_t data);
@@ -197,6 +200,7 @@ private:
 	// Each chain: first IC = positions 0-7, second IC = positions 8-15
 	required_ioport_array<8> m_panel;    // K0_0..K3_1: [pa*2+half]
 	output_finder<8, 8>      m_panel_led;   // 8 ports × 8 LEDs (matching K0-K7 input ports)
+	output_finder<>          m_matrix_page; // function matrix page shown by the E-H LEDs, for the layout
 
 	// Potentiometers / analog controls
 	required_ioport_array<16> m_drawbars;   // DB0-DB15: drawbar sliders 1-16
@@ -251,6 +255,8 @@ private:
 	// panel shift register state
 	uint8_t m_panout_data = 0;    // latched PA0-PA5 from PANOUT write
 	uint32_t m_pan_row = 0;       // current scan position
+	bool m_pan_scanning = false;  // the clocks since PANRES are a key scan
+	emu_timer *m_panel_timer = nullptr; // fires when a burst of PANCLKs has ended
 	uint32_t m_pa[4] = {};        // shift register contents (4 PA lines, 16 bits each)
 
 	uint8_t m_vfd_clk = 0xff;
@@ -756,17 +762,41 @@ void wersi_ex20_state::panclk_w(uint8_t data)
 	m_pan_row++;
 
 	for (int pa = 0; pa < 4; pa++)
-	{
 		m_pa[pa] = (m_pa[pa] << 1) | BIT(m_panout_data, pa);
 
-		// Update LEDs — first IC (bits 0-7) → K{pa*2}_xx
-		//                chained IC (bits 8-15) → K{pa*2+1}_xx
+	// The firmware shifts all 16 LED bits in one burst of clocks when the
+	// LEDs change, and runs a key scan (PANRES, then a walking bit) through
+	// the same registers. The LEDs are taken when a burst has ended; a key
+	// scan's bits are not LEDs, the firmware shifts the LEDs in again after it.
+	m_panel_timer->adjust(attotime::from_msec(1));
+}
+
+TIMER_CALLBACK_MEMBER(wersi_ex20_state::panel_burst_end)
+{
+	if (m_pan_scanning)
+		m_pan_scanning = false;
+	else
+		update_panel_leds();
+}
+
+void wersi_ex20_state::update_panel_leds()
+{
+	// first IC (bits 0-7) → K{pa*2}_xx, chained IC (bits 8-15) → K{pa*2+1}_xx
+	for (int pa = 0; pa < 4; pa++)
+	{
 		for (int i = 0; i < 8; i++)
 		{
 			m_panel_led[pa * 2][i]     = BIT(m_pa[pa], i);
 			m_panel_led[pa * 2 + 1][i] = BIT(m_pa[pa], i + 8);
 		}
 	}
+
+	// The function matrix: with H (K0 bit 7) off the A-G rows play, with H on
+	// E-G (K0 bits 4-6) select one of the Mode Control pages. The layout shows
+	// the matching overlay: 0 = play, 8 + E|F<<1|G<<2 = Mode Control pages
+	// (8 Mode Control, 9 Synthesis, 10 MIDI, 12 Copy, 15 Special Controls).
+	uint8_t const k0 = m_pa[0] & 0xff;
+	m_matrix_page = BIT(k0, 7) ? (8 | BIT(k0, 4, 3)) : 0;
 }
 
 uint8_t wersi_ex20_state::panin_r()
@@ -855,6 +885,7 @@ void wersi_ex20_state::panres_w(uint8_t data)
 	// Clears all PA shift register outputs → all LEDs off (side-effect)
 	// NB: Starts scanning for pressed button
 	m_pan_row = 0;
+	m_pan_scanning = true;
 	for (auto &pa : m_pa)
 		pa = 0;
 	LOGMASKED(LOG_DBG, "PANRES = %02X (panel shift registers cleared)\n", data);
@@ -1268,7 +1299,10 @@ void wersi_ex20_state::machine_start()
 	save_item(NAME(m_rarc_slave));
 	save_item(NAME(m_panout_data));
 	save_item(NAME(m_pan_row));
+	save_item(NAME(m_pan_scanning));
 	save_item(NAME(m_pa));
+
+	m_panel_timer = timer_alloc(FUNC(wersi_ex20_state::panel_burst_end), this);
 
 	// ACIA modem control — DCD and CTS must be asserted (active low = 0)
 	// for the 6850 to operate. Without this, the ACIA init at $FD3F hangs
