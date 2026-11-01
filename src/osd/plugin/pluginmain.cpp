@@ -86,6 +86,10 @@ namespace {
 constexpr char NVRAM_MAGIC[4] = { 'M', 'P', 'N', 'V' };
 constexpr u32 NVRAM_VERSION = 1;
 
+// entries of adjusters' values: the prefix, the port's tag, ':' and the
+// field's mask in hex, with the value as data
+constexpr char const NVRAM_FIELD_PREFIX[] = "ioport:";
+
 void put_u32(std::vector<u8> &out, u32 value)
 {
 	for (int i = 0; i < 4; i++)
@@ -130,6 +134,24 @@ std::vector<u8> collect_nvram(running_machine &machine)
 		count++;
 	}
 
+	// the adjusters' values, which MAME otherwise keeps in its cfg files
+	for (auto const &port : machine.ioport().ports())
+	{
+		for (ioport_field &field : port.second->fields())
+		{
+			if (field.type() != IPT_ADJUSTER)
+				continue;
+			ioport_field::user_settings settings;
+			field.get_user_settings(settings);
+			std::string const tag = util::string_format("%s%s:%x", NVRAM_FIELD_PREFIX, port.first, field.mask());
+			put_u32(result, u32(tag.size()));
+			result.insert(result.end(), tag.begin(), tag.end());
+			put_u32(result, 4);
+			put_u32(result, u32(settings.value));
+			count++;
+		}
+	}
+
 	if (!count)
 		return std::vector<u8>();
 	for (int i = 0; i < 4; i++)
@@ -163,6 +185,27 @@ void apply_nvram(running_machine &machine, std::vector<u8> const &blob)
 		ptr += tag_size;
 		if (!get_u32(ptr, end, data_size) || (u32(end - ptr) < data_size))
 			break;
+
+		// an adjuster's value
+		if (tag.starts_with(NVRAM_FIELD_PREFIX))
+		{
+			std::string::size_type const colon = tag.rfind(':');
+			std::string const port_tag = tag.substr(std::strlen(NVRAM_FIELD_PREFIX), colon - std::strlen(NVRAM_FIELD_PREFIX));
+			auto const found = machine.ioport().ports().find(port_tag);
+			ioport_port *const port = (found != machine.ioport().ports().end()) ? found->second.get() : nullptr;
+			ioport_field *const field = port ? port->field(ioport_value(std::strtoul(tag.c_str() + colon + 1, nullptr, 16))) : nullptr;
+			u8 const *value_ptr = ptr;
+			u32 value;
+			if (field && (field->type() == IPT_ADJUSTER) && (data_size == 4) && get_u32(value_ptr, end, value))
+			{
+				ioport_field::user_settings settings;
+				field->get_user_settings(settings);
+				settings.value = ioport_value(value);
+				field->set_user_settings(settings);
+			}
+			ptr += data_size;
+			continue;
+		}
 
 		device_t *const device = machine.root_device().subdevice(tag);
 		device_nvram_interface *nvram = nullptr;
@@ -443,6 +486,7 @@ void mp_instance::emulation_thread(std::promise<std::string> started)
 			return fail(std::string());
 		}
 
+		osd.collect_fields();
 		running = true;
 		started.set_value(std::string());
 		reported = true;
@@ -803,6 +847,43 @@ void mp_panel_pointer(mp_instance *instance, uint32_t id, int32_t x, int32_t y, 
 void mp_panel_pointer_leave(mp_instance *instance, uint32_t id)
 {
 	push_pointer(instance, plugin_panel::pointer_event{ id, -1, -1, 0, true });
+}
+
+uint32_t mp_field_count(const mp_instance *instance)
+{
+	return uint32_t(instance->io.fields.size());
+}
+
+int mp_field_info(const mp_instance *instance, uint32_t index, mp_field *field)
+{
+	if (index >= instance->io.fields.size() || !field)
+		return 0;
+	plugin_io::field_info const &info = instance->io.fields[index];
+	field->name = info.name.c_str();
+	field->port = info.port.c_str();
+	field->mask = info.mask;
+	field->min = info.min;
+	field->max = info.max;
+	field->default_value = info.default_value;
+	return 1;
+}
+
+void mp_set_field(mp_instance *instance, uint32_t index, int32_t value)
+{
+	plugin_io &io = instance->io;
+	std::lock_guard<std::mutex> lock(io.field_mutex);
+	io.field_changes.emplace_back(index, value);
+}
+
+uint64_t mp_field_values(mp_instance *instance, uint64_t serial, int32_t *values, uint32_t count)
+{
+	plugin_io &io = instance->io;
+	std::lock_guard<std::mutex> lock(io.field_mutex);
+	if (serial == io.field_serial)
+		return serial;
+	if (values)
+		std::copy_n(io.field_values.begin(), std::min<std::size_t>(count, io.field_values.size()), values);
+	return io.field_serial;
 }
 
 uint64_t mp_layout_describe(mp_instance *instance, mp_layout_info *info, mp_layout_element *elements, uint32_t max_elements, mp_layout_item *items, uint32_t max_items)

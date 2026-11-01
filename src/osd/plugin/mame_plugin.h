@@ -41,7 +41,7 @@ extern "C" {
 #define MP_API __attribute__((visibility("default")))
 #endif
 
-#define MP_API_VERSION 8
+#define MP_API_VERSION 9
 
 typedef struct mp_instance mp_instance;
 
@@ -150,6 +150,31 @@ MP_API uint64_t mp_panel_frame(mp_instance *instance, void *pixels, uint32_t wid
    are below 64. */
 MP_API void mp_panel_pointer(mp_instance *instance, uint32_t id, int32_t x, int32_t y, uint32_t buttons);
 MP_API void mp_panel_pointer_leave(mp_instance *instance, uint32_t id);
+
+/* Fields: the machine's adjusters (knobs and sliders of the hardware that
+   MAME emulates, e.g. a drum machine's mixer), for hosts that make them
+   parameters.  The list is fixed once mp_create returns; the values travel
+   in the NVRAM data (mp_nvram) and override those MAME keeps in its cfg
+   files. */
+typedef struct mp_field
+{
+	const char *name;            /* as MAME names it, e.g. "MASTER VOLUME"; valid while the instance exists */
+	const char *port;            /* the input port's tag */
+	uint32_t mask;
+	int32_t min, max;
+	int32_t default_value;
+} mp_field;
+
+MP_API uint32_t mp_field_count(const mp_instance *instance);
+MP_API int mp_field_info(const mp_instance *instance, uint32_t index, mp_field *field);
+
+/* sets a field's value, applied by the emulation */
+MP_API void mp_set_field(mp_instance *instance, uint32_t index, int32_t value);
+
+/* the fields' current values, if they differ from those with the given
+   serial (they also change when the panel's knobs are dragged); returns
+   their serial, or the passed one */
+MP_API uint64_t mp_field_values(mp_instance *instance, uint64_t serial, int32_t *values, uint32_t count);
 
 /* Layout: the machine's layout as MAME resolved it, for a host that draws
    the panel itself.  The current view is a list of items in drawing

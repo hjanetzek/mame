@@ -661,6 +661,62 @@ void plugin_osd_interface::queue_input(int input, bool pressed)
 		pending.push_back(pressed);
 }
 
+void plugin_osd_interface::collect_fields()
+{
+	// ports are kept by tag, so the order is the same every time
+	m_fields.clear();
+	m_io.fields.clear();
+	for (auto const &port : machine().ioport().ports())
+	{
+		for (ioport_field &field : port.second->fields())
+		{
+			if (field.type() != IPT_ADJUSTER)
+				continue;
+			m_fields.push_back(&field);
+			m_io.fields.push_back(plugin_io::field_info{
+					field.name(), port.second->tag(), field.mask(),
+					s32(field.minval()), s32(field.maxval()), s32(field.defvalue()) });
+		}
+	}
+	m_field_values.clear();
+	update_fields();
+}
+
+void plugin_osd_interface::update_fields()
+{
+	// the host's changes, then the values, which the panel changes too
+	std::vector<std::pair<u32, s32>> changes;
+	{
+		std::lock_guard<std::mutex> lock(m_io.field_mutex);
+		changes.swap(m_io.field_changes);
+	}
+	for (auto const &change : changes)
+	{
+		if (change.first >= m_fields.size())
+			continue;
+		ioport_field &field = *m_fields[change.first];
+		ioport_field::user_settings settings;
+		field.get_user_settings(settings);
+		settings.value = ioport_value(std::clamp<s32>(change.second, s32(field.minval()), s32(field.maxval())));
+		field.set_user_settings(settings);
+	}
+
+	std::vector<s32> values;
+	values.reserve(m_fields.size());
+	for (ioport_field *field : m_fields)
+	{
+		ioport_field::user_settings settings;
+		field->get_user_settings(settings);
+		values.push_back(s32(settings.value));
+	}
+	if (values == m_field_values)
+		return;
+	m_field_values = values;
+	std::lock_guard<std::mutex> lock(m_io.field_mutex);
+	m_io.field_values = std::move(values);
+	m_io.field_serial++;
+}
+
 void plugin_osd_interface::update(bool skip_redraw)
 {
 	osd_common_t::update(skip_redraw);
@@ -669,6 +725,8 @@ void plugin_osd_interface::update(bool skip_redraw)
 
 void plugin_osd_interface::update_panel()
 {
+	update_fields();
+
 	// in layout development, files in the art path that change are
 	// loaded again, without restarting the machine
 	if (m_io.reload_layout && (machine().phase() == machine_phase::RUNNING))

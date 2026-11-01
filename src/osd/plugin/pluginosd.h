@@ -179,6 +179,21 @@ struct plugin_io
 	// layout development: load the panel's layout files again when they
 	// change, set before the machine starts
 	bool reload_layout = false;
+
+	// the machine's adjusters (mp_field_*): the list is made by the
+	// emulation thread before mp_create returns and doesn't change
+	struct field_info
+	{
+		std::string name;
+		std::string port;
+		std::uint32_t mask;
+		std::int32_t min, max, default_value;
+	};
+	std::vector<field_info> fields;
+	std::mutex field_mutex;
+	std::vector<std::pair<std::uint32_t, std::int32_t>> field_changes;   // host to emulation thread
+	std::vector<std::int32_t> field_values;                              // emulation thread to host
+	std::uint64_t field_serial = 0;
 };
 
 
@@ -187,6 +202,9 @@ class plugin_osd_interface : public osd_common_t
 public:
 	plugin_osd_interface(osd_options &options, plugin_io &io);
 	virtual ~plugin_osd_interface();
+
+	// lists the machine's adjusters once it started (plugin_io::fields)
+	void collect_fields();
 
 	// general overridables
 	virtual void init(running_machine &machine) override;
@@ -250,6 +268,11 @@ private:
 	std::uint64_t m_layout_serial = 0;    // of the current description
 	std::vector<plugin_panel::layout_input_event> m_layout_input_events;
 	osd_ticks_t m_layout_captured = 0;
+
+	// the machine's adjusters (plugin_io::fields), emulation thread
+	void update_fields();
+	std::vector<ioport_field *> m_fields;
+	std::vector<std::int32_t> m_field_values;
 
 	// layout development (plugin_io::reload_layout)
 	void create_panel_target();
