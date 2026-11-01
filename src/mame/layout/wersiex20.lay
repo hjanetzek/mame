@@ -1,408 +1,410 @@
 <?xml version="1.0"?>
 <!--
 license:CC0-1.0
-Wersi MK1 "Stage Performer" / EX-20 layout
-VFD display + panel buttons with LED indicators
+Wersi MIDI EX20 Expander front panel
+Generated from measurements of a front view of the unit.
 -->
 <mamelayout version="2">
-	<element name="vfd_char"><led16segsc><color red="0" green="0.6" blue="1.0" /></led16segsc></element>
-	<element name="bg"><rect><color red="0.12" green="0.12" blue="0.12" /></rect></element>
-	<element name="vfd_bg"><rect><color red="0.02" green="0.02" blue="0.02" /></rect></element>
-	<element name="btn"><rect><color red="0.35" green="0.35" blue="0.35" /></rect></element>
-	<element name="btn_red"><rect><color red="0.55" green="0.15" blue="0.15" /></rect></element>
-
-	<element name="led" defstate="0">
-		<rect state="0"><color red="0.15" green="0.02" blue="0.02" /></rect>
-		<rect state="1"><color red="1.0" green="0.1" blue="0.1" /></rect>
-	</element>
-	<element name="hl" defstate="0">
-		<text string=" "><color red="0" green="0" blue="0" /></text>
-		<rect state="1"><color red="1" green="1" blue="1" /></rect>
-	</element>
-
-	<!-- Button labels -->
-	<element name="t_A"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="A"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_B"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="B"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_C"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="C"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_D"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="D"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_E"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="E"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_F"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="F"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_G"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="G"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_H"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="H"><color red="1" green="1" blue="1" /></text></element>
-
-	<element name="label_rows"><text string="Matrix Rows"><color red="0.5" green="0.5" blue="0.5" /></text></element>
-	<element name="label_cols"><text string="Matrix Cols"><color red="0.5" green="0.5" blue="0.5" /></text></element>
-
-	<!-- ==================== PA0 first: CB31-IC4 (T1-T8: Matrix rows A-H) ==================== -->
-	<!-- A-D column (left side of matrix) -->
-	<group name="pa0_rows_ad">
-		<element name="K0_00" ref="led"><bounds x="3" y="0"  width="4" height="2" /></element>
-		<element ref="t_A"><bounds x="0" y="3"  width="14" height="18" /></element>
-		<element ref="hl" inputtag="K0" inputmask="0x01"><bounds x="0" y="3"  width="14" height="18" /><color alpha="0.15" /></element>
-
-		<element name="K0_01" ref="led"><bounds x="3" y="24" width="4" height="2" /></element>
-		<element ref="t_B"><bounds x="0" y="27" width="14" height="18" /></element>
-		<element ref="hl" inputtag="K0" inputmask="0x02"><bounds x="0" y="27" width="14" height="18" /><color alpha="0.15" /></element>
-
-		<element name="K0_02" ref="led"><bounds x="3" y="48" width="4" height="2" /></element>
-		<element ref="t_C"><bounds x="0" y="51" width="14" height="18" /></element>
-		<element ref="hl" inputtag="K0" inputmask="0x04"><bounds x="0" y="51" width="14" height="18" /><color alpha="0.15" /></element>
-
-		<element name="K0_03" ref="led"><bounds x="3" y="72" width="4" height="2" /></element>
-		<element ref="t_D"><bounds x="0" y="75" width="14" height="18" /></element>
-		<element ref="hl" inputtag="K0" inputmask="0x08"><bounds x="0" y="75" width="14" height="18" /><color alpha="0.15" /></element>
-	</group>
-
-	<!-- E-H column (right side of matrix) -->
-	<group name="pa0_rows_eh">
-		<element name="K0_04" ref="led"><bounds x="3" y="0"  width="4" height="2" /></element>
-		<element ref="t_E"><bounds x="0" y="3"  width="14" height="18" /></element>
-		<element ref="hl" inputtag="K0" inputmask="0x10"><bounds x="0" y="3"  width="14" height="18" /><color alpha="0.15" /></element>
-
-		<element name="K0_05" ref="led"><bounds x="3" y="24" width="4" height="2" /></element>
-		<element ref="t_F"><bounds x="0" y="27" width="14" height="18" /></element>
-		<element ref="hl" inputtag="K0" inputmask="0x20"><bounds x="0" y="27" width="14" height="18" /><color alpha="0.15" /></element>
-
-		<element name="K0_06" ref="led"><bounds x="3" y="48" width="4" height="2" /></element>
-		<element ref="t_G"><bounds x="0" y="51" width="14" height="18" /></element>
-		<element ref="hl" inputtag="K0" inputmask="0x40"><bounds x="0" y="51" width="14" height="18" /><color alpha="0.15" /></element>
-
-		<element name="K0_07" ref="led"><bounds x="3" y="72" width="4" height="2" /></element>
-		<element ref="t_H"><bounds x="0" y="75" width="14" height="18" /></element>
-		<element ref="hl" inputtag="K0" inputmask="0x80"><bounds x="0" y="75" width="14" height="18" /><color alpha="0.15" /></element>
-	</group>
-
-	<!-- ==================== PA0 chained: CB31-IC5 (T9-T16: Matrix 1-8) ==================== -->
-	<!-- Labels reuse t_1..t_8 defined above -->
-	<element name="t_1"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="1"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_2"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="2"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_3"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="3"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_4"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="4"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_5"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="5"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_6"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="6"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_7"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="7"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_8"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="8"><color red="1" green="1" blue="1" /></text></element>
-
-	<group name="pa0_matrix_cols">
-		<element name="K1_00" ref="led"><bounds x="0" y="0" width="4" height="2" /></element>
-		<element ref="t_1"><bounds x="0" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K1" inputmask="0x01"><bounds x="0" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K1_01" ref="led"><bounds x="22" y="0" width="4" height="2" /></element>
-		<element ref="t_2"><bounds x="22" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K1" inputmask="0x02"><bounds x="22" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K1_02" ref="led"><bounds x="44" y="0" width="4" height="2" /></element>
-		<element ref="t_3"><bounds x="44" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K1" inputmask="0x04"><bounds x="44" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K1_03" ref="led"><bounds x="66" y="0" width="4" height="2" /></element>
-		<element ref="t_4"><bounds x="66" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K1" inputmask="0x08"><bounds x="66" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K1_04" ref="led"><bounds x="88" y="0" width="4" height="2" /></element>
-		<element ref="t_5"><bounds x="88" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K1" inputmask="0x10"><bounds x="88" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K1_05" ref="led"><bounds x="110" y="0" width="4" height="2" /></element>
-		<element ref="t_6"><bounds x="110" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K1" inputmask="0x20"><bounds x="110" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K1_06" ref="led"><bounds x="132" y="0" width="4" height="2" /></element>
-		<element ref="t_7"><bounds x="132" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K1" inputmask="0x40"><bounds x="132" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K1_07" ref="led"><bounds x="154" y="0" width="4" height="2" /></element>
-		<element ref="t_8"><bounds x="154" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K1" inputmask="0x80"><bounds x="154" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-	</group>
-
-	<!-- ==================== PA3 chained: CB30-IC3 (Presets-RAM 1-8) ==================== -->
-	<element name="label_presets"><text string="PRESETS-RAM"><color red="0.5" green="0.5" blue="0.5" /></text></element>
-	<group name="pa3_presets">
-		<!-- Row 1: Presets 1-4 -->
-		<element name="K7_00" ref="led"><bounds x="3"  y="0" width="4" height="2" /></element>
-		<element ref="t_1"><bounds x="0"  y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K7" inputmask="0x01"><bounds x="0"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K7_01" ref="led"><bounds x="23" y="0" width="4" height="2" /></element>
-		<element ref="t_2"><bounds x="20" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K7" inputmask="0x02"><bounds x="20" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K7_02" ref="led"><bounds x="43" y="0" width="4" height="2" /></element>
-		<element ref="t_3"><bounds x="40" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K7" inputmask="0x04"><bounds x="40" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K7_03" ref="led"><bounds x="63" y="0" width="4" height="2" /></element>
-		<element ref="t_4"><bounds x="60" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K7" inputmask="0x08"><bounds x="60" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<!-- Row 2: Presets 5-8 -->
-		<element name="K7_04" ref="led"><bounds x="3"  y="18" width="4" height="2" /></element>
-		<element ref="t_5"><bounds x="0"  y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K7" inputmask="0x10"><bounds x="0"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K7_05" ref="led"><bounds x="23" y="18" width="4" height="2" /></element>
-		<element ref="t_6"><bounds x="20" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K7" inputmask="0x20"><bounds x="20" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K7_06" ref="led"><bounds x="43" y="18" width="4" height="2" /></element>
-		<element ref="t_7"><bounds x="40" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K7" inputmask="0x40"><bounds x="40" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K7_07" ref="led"><bounds x="63" y="18" width="4" height="2" /></element>
-		<element ref="t_8"><bounds x="60" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K7" inputmask="0x80"><bounds x="60" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-	</group>
-
-	<!-- ==================== PA3 first + PA1 first: Voice/Source Control ==================== -->
-	<element name="label_voicectl"><text string="VOICE CONTROL"><color red="0.5" green="0.5" blue="0.5" /></text></element>
-	<element name="label_srcctl"><text string="SOURCE CONTROL"><color red="0.5" green="0.5" blue="0.5" /></text></element>
-	<element name="t_2nd"><rect><color red="0.2" green="0.2" blue="0.5" /></rect><text string="2"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_1st"><rect><color red="0.55" green="0.15" blue="0.15" /></rect><text string="1"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_2v"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="2"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_3v"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="3"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_4v"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="4"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_bkpr"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="BkPr"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_ctpr"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="CtPr"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_bkvc"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="BkVc"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_ctvc"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="CtVc"><color red="1" green="1" blue="1" /></text></element>
-	<element name="t_whlim"><rect><color red="0.35" green="0.35" blue="0.35" /></rect><text string="WHL"><color red="1" green="1" blue="1" /></text></element>
-
-	<group name="pa3_voice_ctl">
-		<!-- Voice Control row: 2nd, 1st, 2.Voice, 3.Voice, 4.Voice -->
-		<element name="K6_00" ref="led"><bounds x="3"  y="0" width="4" height="2" /></element>
-		<element ref="t_2nd"><bounds x="0"  y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K6" inputmask="0x01"><bounds x="0"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K6_01" ref="led"><bounds x="23" y="0" width="4" height="2" /></element>
-		<element ref="t_1st"><bounds x="20" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K6" inputmask="0x02"><bounds x="20" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K6_02" ref="led"><bounds x="43" y="0" width="4" height="2" /></element>
-		<element ref="t_2v"><bounds x="40" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K6" inputmask="0x04"><bounds x="40" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K6_03" ref="led"><bounds x="63" y="0" width="4" height="2" /></element>
-		<element ref="t_3v"><bounds x="60" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K6" inputmask="0x08"><bounds x="60" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K6_04" ref="led"><bounds x="83" y="0" width="4" height="2" /></element>
-		<element ref="t_4v"><bounds x="80" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K6" inputmask="0x10"><bounds x="80" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<!-- Source Control row: BkPr, CtPr, BkVc, CtVc(K2), WHL/LIM(K2) -->
-		<element name="K6_05" ref="led"><bounds x="3"  y="18" width="4" height="2" /></element>
-		<element ref="t_bkpr"><bounds x="0"  y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K6" inputmask="0x20"><bounds x="0"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K6_06" ref="led"><bounds x="23" y="18" width="4" height="2" /></element>
-		<element ref="t_ctpr"><bounds x="20" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K6" inputmask="0x40"><bounds x="20" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K6_07" ref="led"><bounds x="43" y="18" width="4" height="2" /></element>
-		<element ref="t_bkvc"><bounds x="40" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K6" inputmask="0x80"><bounds x="40" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<!-- These two are on K2 (PA1 first IC2), bits 0-1 -->
-		<element name="K2_00" ref="led"><bounds x="63" y="18" width="4" height="2" /></element>
-		<element ref="t_ctvc"><bounds x="60" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K2" inputmask="0x01"><bounds x="60" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K2_01" ref="led"><bounds x="83" y="18" width="4" height="2" /></element>
-		<element ref="t_whlim"><bounds x="80" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K2" inputmask="0x02"><bounds x="80" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-	</group>
-
-	<!-- ==================== PA1+PA2: DMS Instruments 1-20 ==================== -->
-	<element name="label_dms"><text string="DMS-INSTRUMENTS-ROM"><color red="0.5" green="0.5" blue="0.5" /></text></element>
-	<!-- DMS 1-6 = K2 bits 2-7, DMS 7-14 = K3 bits 0-7, DMS 15-20 = K4 bits 0-5 -->
-	<group name="pa1_dms">
-		<!-- Row 1: DMS 1-10 -->
-		<!-- DMS 1-6 from K2 bits 2-7 -->
-		<element name="K2_02" ref="led"><bounds x="3"   y="0" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="0"   y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K2" inputmask="0x04"><bounds x="0"   y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K2_03" ref="led"><bounds x="23"  y="0" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="20"  y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K2" inputmask="0x08"><bounds x="20"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K2_04" ref="led"><bounds x="43"  y="0" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="40"  y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K2" inputmask="0x10"><bounds x="40"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K2_05" ref="led"><bounds x="63"  y="0" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="60"  y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K2" inputmask="0x20"><bounds x="60"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K2_06" ref="led"><bounds x="83"  y="0" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="80"  y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K2" inputmask="0x40"><bounds x="80"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K2_07" ref="led"><bounds x="103" y="0" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="100" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K2" inputmask="0x80"><bounds x="100" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<!-- DMS 7-10 from K3 bits 0-3 -->
-		<element name="K3_00" ref="led"><bounds x="123" y="0" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="120" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K3" inputmask="0x01"><bounds x="120" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K3_01" ref="led"><bounds x="143" y="0" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="140" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K3" inputmask="0x02"><bounds x="140" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K3_02" ref="led"><bounds x="163" y="0" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="160" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K3" inputmask="0x04"><bounds x="160" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K3_03" ref="led"><bounds x="183" y="0" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="180" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K3" inputmask="0x08"><bounds x="180" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<!-- Row 2: DMS 11-20 -->
-		<!-- DMS 11-14 from K3 bits 4-7 -->
-		<element name="K3_04" ref="led"><bounds x="3"   y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="0"   y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K3" inputmask="0x10"><bounds x="0"   y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K3_05" ref="led"><bounds x="23"  y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="20"  y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K3" inputmask="0x20"><bounds x="20"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K3_06" ref="led"><bounds x="43"  y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="40"  y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K3" inputmask="0x40"><bounds x="40"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K3_07" ref="led"><bounds x="63"  y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="60"  y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K3" inputmask="0x80"><bounds x="60"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<!-- DMS 15-20 from K4 bits 0-5 -->
-		<element name="K4_00" ref="led"><bounds x="83"  y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="80"  y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K4" inputmask="0x01"><bounds x="80"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K4_01" ref="led"><bounds x="103" y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="100" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K4" inputmask="0x02"><bounds x="100" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K4_02" ref="led"><bounds x="123" y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="120" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K4" inputmask="0x04"><bounds x="120" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K4_03" ref="led"><bounds x="143" y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="140" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K4" inputmask="0x08"><bounds x="140" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K4_04" ref="led"><bounds x="163" y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="160" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K4" inputmask="0x10"><bounds x="160" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K4_05" ref="led"><bounds x="183" y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="180" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K4" inputmask="0x20"><bounds x="180" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-	</group>
-
-	<!-- ==================== PA2: CV Instruments 1-10 ==================== -->
-	<element name="label_cv"><text string="CV-INST-RAM"><color red="0.5" green="0.5" blue="0.5" /></text></element>
-	<!-- CV 1-2 = K4 bits 6-7, CV 3-10 = K5 bits 0-7 -->
-	<group name="pa2_cv">
-		<!-- Row 1: CV 1-5 -->
-		<element name="K4_06" ref="led"><bounds x="3"  y="0" width="4" height="2" /></element>
-		<element ref="t_1"><bounds x="0"  y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K4" inputmask="0x40"><bounds x="0"  y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K4_07" ref="led"><bounds x="23" y="0" width="4" height="2" /></element>
-		<element ref="t_2"><bounds x="20" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K4" inputmask="0x80"><bounds x="20" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K5_00" ref="led"><bounds x="43" y="0" width="4" height="2" /></element>
-		<element ref="t_3"><bounds x="40" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K5" inputmask="0x01"><bounds x="40" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K5_01" ref="led"><bounds x="63" y="0" width="4" height="2" /></element>
-		<element ref="t_4"><bounds x="60" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K5" inputmask="0x02"><bounds x="60" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K5_02" ref="led"><bounds x="83" y="0" width="4" height="2" /></element>
-		<element ref="t_5"><bounds x="80" y="3" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K5" inputmask="0x04"><bounds x="80" y="3" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<!-- Row 2: CV 6-10 -->
-		<element name="K5_03" ref="led"><bounds x="3"  y="18" width="4" height="2" /></element>
-		<element ref="t_6"><bounds x="0"  y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K5" inputmask="0x08"><bounds x="0"  y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K5_04" ref="led"><bounds x="23" y="18" width="4" height="2" /></element>
-		<element ref="t_7"><bounds x="20" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K5" inputmask="0x10"><bounds x="20" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K5_05" ref="led"><bounds x="43" y="18" width="4" height="2" /></element>
-		<element ref="t_8"><bounds x="40" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K5" inputmask="0x20"><bounds x="40" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K5_06" ref="led"><bounds x="63" y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="60" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K5" inputmask="0x40"><bounds x="60" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-
-		<element name="K5_07" ref="led"><bounds x="83" y="18" width="4" height="2" /></element>
-		<element ref="btn"><bounds x="80" y="21" width="18" height="12" /></element>
-		<element ref="hl" inputtag="K5" inputmask="0x80"><bounds x="80" y="21" width="18" height="12" /><color alpha="0.15" /></element>
-	</group>
-	<group name="pa0_matrix">
-		<!-- Function Control Matrix -->
-		<!-- Cols 1-8 across the top -->
-		<group ref="pa0_matrix_cols"><bounds x="20" y="0" width="174" height="16" /></group>
-		<!-- Row A-D on the left -->
-		<group ref="pa0_rows_ad"><bounds x="0" y="20" width="16" height="95" /></group>
-		<!-- Row E-H on the right -->
-		<group ref="pa0_rows_eh"><bounds x="198" y="20" width="16" height="95" /></group>
-	</group>
-
-	<!-- ==================== MAIN VIEW ==================== -->
-	<view name="MK1 Panel">
-		<element ref="bg"><bounds x="0" y="0" width="542" height="200" /></element>
-
-		<!-- VFD Display -->
-		<element ref="vfd_bg"><bounds x="10" y="12" width="185" height="28" /></element>
-		<element name="vfd0"  ref="vfd_char" state="0"><bounds x="15" y="17" width="10" height="16" /></element>
-		<element name="vfd1"  ref="vfd_char" state="0"><bounds x="26" y="17" width="10" height="16" /></element>
-		<element name="vfd2"  ref="vfd_char" state="0"><bounds x="37" y="17" width="10" height="16" /></element>
-		<element name="vfd3"  ref="vfd_char" state="0"><bounds x="48" y="17" width="10" height="16" /></element>
-		<element name="vfd4"  ref="vfd_char" state="0"><bounds x="59" y="17" width="10" height="16" /></element>
-		<element name="vfd5"  ref="vfd_char" state="0"><bounds x="70" y="17" width="10" height="16" /></element>
-		<element name="vfd6"  ref="vfd_char" state="0"><bounds x="81" y="17" width="10" height="16" /></element>
-		<element name="vfd7"  ref="vfd_char" state="0"><bounds x="92" y="17" width="10" height="16" /></element>
-		<element name="vfd8"  ref="vfd_char" state="0"><bounds x="103" y="17" width="10" height="16" /></element>
-		<element name="vfd9"  ref="vfd_char" state="0"><bounds x="114" y="17" width="10" height="16" /></element>
-		<element name="vfd10" ref="vfd_char" state="0"><bounds x="125" y="17" width="10" height="16" /></element>
-		<element name="vfd11" ref="vfd_char" state="0"><bounds x="136" y="17" width="10" height="16" /></element>
-		<element name="vfd12" ref="vfd_char" state="0"><bounds x="147" y="17" width="10" height="16" /></element>
-		<element name="vfd13" ref="vfd_char" state="0"><bounds x="158" y="17" width="10" height="16" /></element>
-		<element name="vfd14" ref="vfd_char" state="0"><bounds x="169" y="17" width="10" height="16" /></element>
-		<element name="vfd15" ref="vfd_char" state="0"><bounds x="180" y="17" width="10" height="16" /></element>
-
-		<!-- Presets-RAM (K7, PA3 chain CB30-IC3) -->
-		<element ref="label_presets"><bounds x="5" y="48" width="80" height="8" /></element>
-		<group ref="pa3_presets"><bounds x="5" y="58" width="80" height="35" /></group>
-
-		<!-- Voice / Source Control (K6 + K2 bits 0-1) -->
-		<element ref="label_voicectl"><bounds x="95" y="48" width="100" height="8" /></element>
-		<group ref="pa3_voice_ctl"><bounds x="95" y="58" width="100" height="35" /></group>
-		<element ref="label_srcctl"><bounds x="95" y="96" width="100" height="8" /></element>
-
-		<!-- DMS Instruments 1-20 (K2 bits 2-7, K3, K4 bits 0-5) -->
-		<element ref="label_dms"><bounds x="5" y="108" width="200" height="8" /></element>
-		<group ref="pa1_dms"><bounds x="5" y="118" width="200" height="35" /></group>
-
-		<!-- CV Instruments 1-10 (K4 bits 6-7, K5) -->
-		<element ref="label_cv"><bounds x="215" y="108" width="100" height="8" /></element>
-		<group ref="pa2_cv"><bounds x="215" y="118" width="100" height="35" /></group>
-
-		<!-- Function Control Matrix -->
-		<!-- Cols 1-8 across the top -->
-		<group ref="pa0_matrix"><bounds x="320" y="5" width="218" height="115" /></group>
+	<element name="panel"><image><data><![CDATA[<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="5 4 1406 441"><rect x="5" y="4" width="1406" height="441" rx="3" fill="#1a2539" /><rect x="13" y="113" width="34" height="20" rx="10" fill="#0e1520" /><rect x="15" y="115" width="30" height="16" rx="8" fill="#e6e6e4" /><rect x="13" y="317" width="34" height="20" rx="10" fill="#0e1520" /><rect x="15" y="319" width="30" height="16" rx="8" fill="#e6e6e4" /><rect x="1371" y="111" width="34" height="20" rx="10" fill="#0e1520" /><rect x="1373" y="113" width="30" height="16" rx="8" fill="#e6e6e4" /><rect x="1371" y="317" width="34" height="20" rx="10" fill="#0e1520" /><rect x="1373" y="319" width="30" height="16" rx="8" fill="#e6e6e4" /><path d="M261,31 H129 Q119,31 119,41 V203 Q119,213 129,213 H495 Q505,213 505,203 V67" fill="none" stroke="#ece8de" stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="round" /><path d="M145,105 H485 Q492,105 492,112 V191 Q492,198 485,198 H145 Q138,198 138,191 V112 Q138,105 145,105 Z" fill="#55595c" /><polygon points="146,110 484,110 452,131 178,131" fill="#45494c" /><polygon points="178,173 452,173 486,193 144,193" fill="#7c8183" /><polygon points="143,111 177,131 177,173 143,192" fill="#4a4e51" /><polygon points="487,111 453,131 453,173 487,192" fill="#4a4e51" /><rect x="178" y="131" width="275" height="42" fill="#020404" /><path d="M159.5,48.5 H178.5 Q181.5,48.5 181.5,51.5 V82.5 Q181.5,85.5 178.5,85.5 H159.5 Q156.5,85.5 156.5,82.5 V51.5 Q156.5,48.5 159.5,48.5 Z" fill="#26303f" /><path d="M160,50 H178 Q180,50 180,52 V82 Q180,84 178,84 H160 Q158,84 158,82 V52 Q158,50 160,50 Z" fill="#090b0d" /><circle cx="195" cy="63" r="6" fill="none" stroke="#ece8de" stroke-width="1.6" /><path d="M190.8,58.8 L199.2,67.2 M199.2,58.8 L190.8,67.2 M184,63 H189" fill="none" stroke="#ece8de" stroke-width="1.6" stroke-linecap="butt" stroke-linejoin="round" /><path d="M206.5,50.5 H219.5 Q222.5,50.5 222.5,53.5 V82.5 Q222.5,85.5 219.5,85.5 H206.5 Q203.5,85.5 203.5,82.5 V53.5 Q203.5,50.5 206.5,50.5 Z" fill="#26303f" /><path d="M207,52 H219 Q221,52 221,54 V82 Q221,84 219,84 H207 Q205,84 205,82 V54 Q205,52 207,52 Z" fill="#090b0d" /><rect x="207" y="53" width="13" height="17" rx="1.5" fill="#c8302c" /><rect x="207" y="53" width="13" height="4" rx="1.5" fill="#e0584e" /><rect x="207" y="62" width="13" height="1.5" fill="#8a1d1a" /><path d="M267,31 V59 H294 V31 M280.5,59 V41 M323,31 H304 V59 H323 M304,45 H319 M331,59 V31 H351 V45 H333 M342,45 L352,59 M381,31 H360 V45 H378 V59 H357 M388,31 V59" fill="none" stroke="#ece8de" stroke-width="10.5" stroke-linejoin="miter" stroke-linecap="square" /><path d="M267,31 V59 H294 V31 M280.5,59 V41 M323,31 H304 V59 H323 M304,45 H319 M331,59 V31 H351 V45 H333 M342,45 L352,59 M381,31 H360 V45 H378 V59 H357 M388,31 V59" fill="none" stroke="#1a2539" stroke-width="1.6" stroke-linejoin="miter" stroke-linecap="square" /><path d="M521,27 H910 Q920,27 920,37 V67 Q920,77 910,77 H521 Q511,77 511,67 V37 Q511,27 521,27 Z" fill="#8a7459" stroke="#ece8de" stroke-width="2.6" /><path d="M519.5,84.5 H526.5 Q531.5,84.5 531.5,89.5 V208.5 Q531.5,213.5 526.5,213.5 H519.5 Q514.5,213.5 514.5,208.5 V89.5 Q514.5,84.5 519.5,84.5 Z" fill="#26303f" /><path d="M520.0,86 H526.0 Q530.0,86 530.0,90 V208 Q530.0,212 526.0,212 H520.0 Q516.0,212 516.0,208 V90 Q516.0,86 520.0,86 Z" fill="#090b0d" /><path d="M545.3,84.5 H552.3 Q557.3,84.5 557.3,89.5 V208.5 Q557.3,213.5 552.3,213.5 H545.3 Q540.3,213.5 540.3,208.5 V89.5 Q540.3,84.5 545.3,84.5 Z" fill="#26303f" /><path d="M545.8,86 H551.8 Q555.8,86 555.8,90 V208 Q555.8,212 551.8,212 H545.8 Q541.8,212 541.8,208 V90 Q541.8,86 545.8,86 Z" fill="#090b0d" /><path d="M571.1,84.5 H578.1 Q583.1,84.5 583.1,89.5 V208.5 Q583.1,213.5 578.1,213.5 H571.1 Q566.1,213.5 566.1,208.5 V89.5 Q566.1,84.5 571.1,84.5 Z" fill="#26303f" /><path d="M571.6,86 H577.6 Q581.6,86 581.6,90 V208 Q581.6,212 577.6,212 H571.6 Q567.6,212 567.6,208 V90 Q567.6,86 571.6,86 Z" fill="#090b0d" /><path d="M596.9,84.5 H603.9 Q608.9,84.5 608.9,89.5 V208.5 Q608.9,213.5 603.9,213.5 H596.9 Q591.9,213.5 591.9,208.5 V89.5 Q591.9,84.5 596.9,84.5 Z" fill="#26303f" /><path d="M597.4,86 H603.4 Q607.4,86 607.4,90 V208 Q607.4,212 603.4,212 H597.4 Q593.4,212 593.4,208 V90 Q593.4,86 597.4,86 Z" fill="#090b0d" /><path d="M622.7,84.5 H629.7 Q634.7,84.5 634.7,89.5 V208.5 Q634.7,213.5 629.7,213.5 H622.7 Q617.7,213.5 617.7,208.5 V89.5 Q617.7,84.5 622.7,84.5 Z" fill="#26303f" /><path d="M623.2,86 H629.2 Q633.2,86 633.2,90 V208 Q633.2,212 629.2,212 H623.2 Q619.2,212 619.2,208 V90 Q619.2,86 623.2,86 Z" fill="#090b0d" /><path d="M648.5,84.5 H655.5 Q660.5,84.5 660.5,89.5 V208.5 Q660.5,213.5 655.5,213.5 H648.5 Q643.5,213.5 643.5,208.5 V89.5 Q643.5,84.5 648.5,84.5 Z" fill="#26303f" /><path d="M649.0,86 H655.0 Q659.0,86 659.0,90 V208 Q659.0,212 655.0,212 H649.0 Q645.0,212 645.0,208 V90 Q645.0,86 649.0,86 Z" fill="#090b0d" /><path d="M674.3,84.5 H681.3 Q686.3,84.5 686.3,89.5 V208.5 Q686.3,213.5 681.3,213.5 H674.3 Q669.3,213.5 669.3,208.5 V89.5 Q669.3,84.5 674.3,84.5 Z" fill="#26303f" /><path d="M674.8,86 H680.8 Q684.8,86 684.8,90 V208 Q684.8,212 680.8,212 H674.8 Q670.8,212 670.8,208 V90 Q670.8,86 674.8,86 Z" fill="#090b0d" /><path d="M700.1,84.5 H707.1 Q712.1,84.5 712.1,89.5 V208.5 Q712.1,213.5 707.1,213.5 H700.1 Q695.1,213.5 695.1,208.5 V89.5 Q695.1,84.5 700.1,84.5 Z" fill="#26303f" /><path d="M700.6,86 H706.6 Q710.6,86 710.6,90 V208 Q710.6,212 706.6,212 H700.6 Q696.6,212 696.6,208 V90 Q696.6,86 700.6,86 Z" fill="#090b0d" /><path d="M725.9,84.5 H732.9 Q737.9,84.5 737.9,89.5 V208.5 Q737.9,213.5 732.9,213.5 H725.9 Q720.9,213.5 720.9,208.5 V89.5 Q720.9,84.5 725.9,84.5 Z" fill="#26303f" /><path d="M726.4,86 H732.4 Q736.4,86 736.4,90 V208 Q736.4,212 732.4,212 H726.4 Q722.4,212 722.4,208 V90 Q722.4,86 726.4,86 Z" fill="#090b0d" /><path d="M751.7,84.5 H758.7 Q763.7,84.5 763.7,89.5 V208.5 Q763.7,213.5 758.7,213.5 H751.7 Q746.7,213.5 746.7,208.5 V89.5 Q746.7,84.5 751.7,84.5 Z" fill="#26303f" /><path d="M752.2,86 H758.2 Q762.2,86 762.2,90 V208 Q762.2,212 758.2,212 H752.2 Q748.2,212 748.2,208 V90 Q748.2,86 752.2,86 Z" fill="#090b0d" /><path d="M777.5,84.5 H784.5 Q789.5,84.5 789.5,89.5 V208.5 Q789.5,213.5 784.5,213.5 H777.5 Q772.5,213.5 772.5,208.5 V89.5 Q772.5,84.5 777.5,84.5 Z" fill="#26303f" /><path d="M778.0,86 H784.0 Q788.0,86 788.0,90 V208 Q788.0,212 784.0,212 H778.0 Q774.0,212 774.0,208 V90 Q774.0,86 778.0,86 Z" fill="#090b0d" /><path d="M803.3,84.5 H810.3 Q815.3,84.5 815.3,89.5 V208.5 Q815.3,213.5 810.3,213.5 H803.3 Q798.3,213.5 798.3,208.5 V89.5 Q798.3,84.5 803.3,84.5 Z" fill="#26303f" /><path d="M803.8,86 H809.8 Q813.8,86 813.8,90 V208 Q813.8,212 809.8,212 H803.8 Q799.8,212 799.8,208 V90 Q799.8,86 803.8,86 Z" fill="#090b0d" /><path d="M829.1,84.5 H836.1 Q841.1,84.5 841.1,89.5 V208.5 Q841.1,213.5 836.1,213.5 H829.1 Q824.1,213.5 824.1,208.5 V89.5 Q824.1,84.5 829.1,84.5 Z" fill="#26303f" /><path d="M829.6,86 H835.6 Q839.6,86 839.6,90 V208 Q839.6,212 835.6,212 H829.6 Q825.6,212 825.6,208 V90 Q825.6,86 829.6,86 Z" fill="#090b0d" /><path d="M854.9000000000001,84.5 H861.9000000000001 Q866.9000000000001,84.5 866.9000000000001,89.5 V208.5 Q866.9000000000001,213.5 861.9000000000001,213.5 H854.9000000000001 Q849.9000000000001,213.5 849.9000000000001,208.5 V89.5 Q849.9000000000001,84.5 854.9000000000001,84.5 Z" fill="#26303f" /><path d="M855.4000000000001,86 H861.4000000000001 Q865.4000000000001,86 865.4000000000001,90 V208 Q865.4000000000001,212 861.4000000000001,212 H855.4000000000001 Q851.4000000000001,212 851.4000000000001,208 V90 Q851.4000000000001,86 855.4000000000001,86 Z" fill="#090b0d" /><path d="M880.7,84.5 H887.7 Q892.7,84.5 892.7,89.5 V208.5 Q892.7,213.5 887.7,213.5 H880.7 Q875.7,213.5 875.7,208.5 V89.5 Q875.7,84.5 880.7,84.5 Z" fill="#26303f" /><path d="M881.2,86 H887.2 Q891.2,86 891.2,90 V208 Q891.2,212 887.2,212 H881.2 Q877.2,212 877.2,208 V90 Q877.2,86 881.2,86 Z" fill="#090b0d" /><path d="M906.5,84.5 H913.5 Q918.5,84.5 918.5,89.5 V208.5 Q918.5,213.5 913.5,213.5 H906.5 Q901.5,213.5 901.5,208.5 V89.5 Q901.5,84.5 906.5,84.5 Z" fill="#26303f" /><path d="M907.0,86 H913.0 Q917.0,86 917.0,90 V208 Q917.0,212 913.0,212 H907.0 Q903.0,212 903.0,208 V90 Q903.0,86 907.0,86 Z" fill="#090b0d" /><path d="M741,219 H522 Q512,219 512,229 V246 Q512,256 522,256 H741 Z" fill="#536a82" /><path d="M741,219 H910 Q920,219 920,229 V246 Q920,256 910,256 H741 Z" fill="#573a2d" /><path d="M939,25 H1283 Q1295,25 1295,37 V242 Q1295,254 1283,254 H939 Q927,254 927,242 V37 Q927,25 939,25 Z" fill="none" stroke="#ece8de" stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="round" /><path d="M992.5,44.5 H1226.5 Q1230.5,44.5 1230.5,48.5 V78.5 Q1230.5,82.5 1226.5,82.5 H992.5 Q988.5,82.5 988.5,78.5 V48.5 Q988.5,44.5 992.5,44.5 Z" fill="#26303f" /><path d="M993,46 H1226 Q1229,46 1229,49 V78 Q1229,81 1226,81 H993 Q990,81 990,78 V49 Q990,46 993,46 Z" fill="#090b0d" /><path d="M944.5,83.5 H970.5 Q974.5,83.5 974.5,87.5 V213.5 Q974.5,217.5 970.5,217.5 H944.5 Q940.5,217.5 940.5,213.5 V87.5 Q940.5,83.5 944.5,83.5 Z" fill="#26303f" /><path d="M945,85 H970 Q973,85 973,88 V213 Q973,216 970,216 H945 Q942,216 942,213 V88 Q942,85 945,85 Z" fill="#090b0d" /><path d="M1248.5,83.5 H1274.5 Q1278.5,83.5 1278.5,87.5 V213.5 Q1278.5,217.5 1274.5,217.5 H1248.5 Q1244.5,217.5 1244.5,213.5 V87.5 Q1244.5,83.5 1248.5,83.5 Z" fill="#26303f" /><path d="M1249,85 H1274 Q1277,85 1277,88 V213 Q1277,216 1274,216 H1249 Q1246,216 1246,213 V88 Q1246,85 1249,85 Z" fill="#090b0d" /><rect x="986.00" y="92" width="31.35" height="31.5" fill="#573a2d" /><rect x="1016.75" y="92" width="31.35" height="31.5" fill="#573a2d" /><rect x="1047.50" y="92" width="31.35" height="31.5" fill="#573a2d" /><rect x="1078.25" y="92" width="31.35" height="31.5" fill="#536a82" /><rect x="1109.00" y="92" width="31.35" height="31.5" fill="#536a82" /><rect x="1139.75" y="92" width="31.35" height="31.5" fill="#6f7d8c" /><rect x="1170.50" y="92" width="31.35" height="31.5" fill="#20283a" /><rect x="1201.25" y="92" width="31.35" height="31.5" fill="#20283a" /><rect x="986.00" y="124.5" width="31.35" height="32.0" fill="#573a2d" /><rect x="1016.75" y="124.5" width="31.35" height="32.0" fill="#573a2d" /><rect x="1047.50" y="124.5" width="31.35" height="32.0" fill="#573a2d" /><rect x="1078.25" y="124.5" width="31.35" height="32.0" fill="#573a2d" /><rect x="1109.00" y="124.5" width="31.35" height="32.0" fill="#573a2d" /><rect x="1139.75" y="124.5" width="31.35" height="32.0" fill="#573a2d" /><rect x="1170.50" y="124.5" width="31.35" height="32.0" fill="#573a2d" /><rect x="1201.25" y="124.5" width="31.35" height="32.0" fill="#573a2d" /><rect x="986.00" y="157.5" width="31.35" height="31.0" fill="#536a82" /><rect x="1016.75" y="157.5" width="31.35" height="31.0" fill="#536a82" /><rect x="1047.50" y="157.5" width="31.35" height="31.0" fill="#536a82" /><rect x="1078.25" y="157.5" width="31.35" height="31.0" fill="#536a82" /><rect x="1109.00" y="157.5" width="31.35" height="31.0" fill="#536a82" /><rect x="1139.75" y="157.5" width="31.35" height="31.0" fill="#536a82" /><rect x="1170.50" y="157.5" width="31.35" height="31.0" fill="#536a82" /><rect x="1201.25" y="157.5" width="31.35" height="31.0" fill="#536a82" /><rect x="986.00" y="189.5" width="31.35" height="26.5" fill="#20283a" /><rect x="1016.75" y="189.5" width="31.35" height="26.5" fill="#20283a" /><rect x="1047.50" y="189.5" width="31.35" height="26.5" fill="#20283a" /><rect x="1078.25" y="189.5" width="31.35" height="26.5" fill="#20283a" /><rect x="1109.00" y="189.5" width="31.35" height="26.5" fill="#20283a" /><rect x="1139.75" y="189.5" width="31.35" height="26.5" fill="#20283a" /><rect x="1170.50" y="189.5" width="31.35" height="26.5" fill="#20283a" /><rect x="1201.25" y="189.5" width="31.35" height="26.5" fill="#20283a" /><rect x="986" y="91" width="246" height="126" fill="none" stroke="#ece8de" stroke-width="2.4" /><rect x="986" y="122.8" width="246" height="2.4" fill="#ece8de" /><rect x="986" y="155.8" width="246" height="2.4" fill="#ece8de" /><rect x="986" y="187.8" width="246" height="2.4" fill="#ece8de" /><rect x="1236" y="127" width="7" height="15" fill="#ece8de" /><rect x="1236" y="192" width="7" height="15" fill="#ece8de" /><rect x="995" y="221" width="48" height="15" fill="#573a2d" /><rect x="1048" y="221" width="59" height="15" fill="#536a82" /><path d="M130,272 H235 Q245,272 245,282 V425 Q245,435 235,435 H130 Q120,435 120,425 V282 Q120,272 130,272 Z" fill="#8a7459" stroke="#ece8de" stroke-width="2.6" /><path d="M140.5,286.5 H145.5 Q149.5,286.5 149.5,290.5 V396.5 Q149.5,400.5 145.5,400.5 H140.5 Q136.5,400.5 136.5,396.5 V290.5 Q136.5,286.5 140.5,286.5 Z" fill="#26303f" /><path d="M141,288 H145 Q148,288 148,291 V396 Q148,399 145,399 H141 Q138,399 138,396 V291 Q138,288 141,288 Z" fill="#090b0d" /><path d="M170.5,286.5 H175.5 Q179.5,286.5 179.5,290.5 V396.5 Q179.5,400.5 175.5,400.5 H170.5 Q166.5,400.5 166.5,396.5 V290.5 Q166.5,286.5 170.5,286.5 Z" fill="#26303f" /><path d="M171,288 H175 Q178,288 178,291 V396 Q178,399 175,399 H171 Q168,399 168,396 V291 Q168,288 171,288 Z" fill="#090b0d" /><path d="M199.5,286.5 H204.5 Q208.5,286.5 208.5,290.5 V396.5 Q208.5,400.5 204.5,400.5 H199.5 Q195.5,400.5 195.5,396.5 V290.5 Q195.5,286.5 199.5,286.5 Z" fill="#26303f" /><path d="M200,288 H204 Q207,288 207,291 V396 Q207,399 204,399 H200 Q197,399 197,396 V291 Q197,288 200,288 Z" fill="#090b0d" /><path d="M229.5,286.5 H234.5 Q238.5,286.5 238.5,290.5 V396.5 Q238.5,400.5 234.5,400.5 H229.5 Q225.5,400.5 225.5,396.5 V290.5 Q225.5,286.5 229.5,286.5 Z" fill="#26303f" /><path d="M230,288 H234 Q237,288 237,291 V396 Q237,399 234,399 H230 Q227,399 227,396 V291 Q227,288 230,288 Z" fill="#090b0d" /><path d="M263,272 H370 Q380,272 380,282 V425 Q380,435 370,435 H263 Q253,435 253,425 V282 Q253,272 263,272 Z" fill="#8a7459" stroke="#ece8de" stroke-width="2.6" /><path d="M264.5,291.5 H371.5 Q375.5,291.5 375.5,295.5 V324.5 Q375.5,328.5 371.5,328.5 H264.5 Q260.5,328.5 260.5,324.5 V295.5 Q260.5,291.5 264.5,291.5 Z" fill="#26303f" /><path d="M265,293 H371 Q374,293 374,296 V324 Q374,327 371,327 H265 Q262,327 262,324 V296 Q262,293 265,293 Z" fill="#090b0d" /><path d="M264.5,368.5 H371.5 Q375.5,368.5 375.5,372.5 V401.5 Q375.5,405.5 371.5,405.5 H264.5 Q260.5,405.5 260.5,401.5 V372.5 Q260.5,368.5 264.5,368.5 Z" fill="#26303f" /><path d="M265,370 H371 Q374,370 374,373 V401 Q374,404 371,404 H265 Q262,404 262,401 V373 Q262,370 265,370 Z" fill="#090b0d" /><path d="M399,272 H537 Q547,272 547,282 V337 Q547,347 537,347 H399 Q389,347 389,337 V282 Q389,272 399,272 Z" fill="#8a7459" stroke="#ece8de" stroke-width="2.6" /><rect x="455" y="262" width="82" height="27" fill="#1a2539" /><path d="M400.5,291.5 H537.5 Q541.5,291.5 541.5,295.5 V324.5 Q541.5,328.5 537.5,328.5 H400.5 Q396.5,328.5 396.5,324.5 V295.5 Q396.5,291.5 400.5,291.5 Z" fill="#26303f" /><path d="M401,293 H537 Q540,293 540,296 V324 Q540,327 537,327 H401 Q398,327 398,324 V296 Q398,293 401,293 Z" fill="#090b0d" /><path d="M399,350 H537 Q547,350 547,360 V425 Q547,435 537,435 H399 Q389,435 389,425 V360 Q389,350 399,350 Z" fill="#8a7459" stroke="#ece8de" stroke-width="2.6" /><path d="M400.5,367.5 H537.5 Q541.5,367.5 541.5,371.5 V400.5 Q541.5,404.5 537.5,404.5 H400.5 Q396.5,404.5 396.5,400.5 V371.5 Q396.5,367.5 400.5,367.5 Z" fill="#26303f" /><path d="M401,369 H537 Q540,369 540,372 V400 Q540,403 537,403 H401 Q398,403 398,400 V372 Q398,369 401,369 Z" fill="#090b0d" /><path d="M560,290 H590 V280 Q590,270 600,270 H848 Q858,270 858,280 V423 Q858,433 848,433 H570 Q560,433 560,423 Z" fill="#8a7459" /><path d="M600,256 Q590,256 590,266 V280 Q590,270 600,270 H848 Q858,270 858,280 V423 Q858,433 848,433 H570 Q560,433 560,423 V276" fill="none" stroke="#ece8de" stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="round" /><path d="M565.5,290.5 H848.5 Q852.5,290.5 852.5,294.5 V323.5 Q852.5,327.5 848.5,327.5 H565.5 Q561.5,327.5 561.5,323.5 V294.5 Q561.5,290.5 565.5,290.5 Z" fill="#26303f" /><path d="M566,292 H848 Q851,292 851,295 V323 Q851,326 848,326 H566 Q563,326 563,323 V295 Q563,292 566,292 Z" fill="#090b0d" /><path d="M565.5,366.5 H848.5 Q852.5,366.5 852.5,370.5 V400.5 Q852.5,404.5 848.5,404.5 H565.5 Q561.5,404.5 561.5,400.5 V370.5 Q561.5,366.5 565.5,366.5 Z" fill="#26303f" /><path d="M566,368 H848 Q851,368 851,371 V400 Q851,403 848,403 H566 Q563,403 563,400 V371 Q563,368 566,368 Z" fill="#090b0d" /><path d="M876,270 H1017 Q1027,270 1027,280 V423 Q1027,433 1017,433 H876 Q866,433 866,423 V280 Q866,270 876,270 Z" fill="#8a7459" stroke="#ece8de" stroke-width="2.6" /><path d="M877.5,288.5 H1015.5 Q1019.5,288.5 1019.5,292.5 V322.5 Q1019.5,326.5 1015.5,326.5 H877.5 Q873.5,326.5 873.5,322.5 V292.5 Q873.5,288.5 877.5,288.5 Z" fill="#26303f" /><path d="M878,290 H1015 Q1018,290 1018,293 V322 Q1018,325 1015,325 H878 Q875,325 875,322 V293 Q875,290 878,290 Z" fill="#090b0d" /><path d="M877.5,366.5 H1015.5 Q1019.5,366.5 1019.5,370.5 V400.5 Q1019.5,404.5 1015.5,404.5 H877.5 Q873.5,404.5 873.5,400.5 V370.5 Q873.5,366.5 877.5,366.5 Z" fill="#26303f" /><path d="M878,368 H1015 Q1018,368 1018,371 V400 Q1018,403 1015,403 H878 Q875,403 875,400 V371 Q875,368 878,368 Z" fill="#090b0d" /><path d="M1045,268 H1285 Q1295,268 1295,278 V423 Q1295,433 1285,433 H1045 Q1035,433 1035,423 V278 Q1035,268 1045,268 Z" fill="#8a7459" stroke="#ece8de" stroke-width="2.6" /><path d="M1066,292 H1262 Q1275,292 1275,305 V387 Q1275,400 1262,400 H1066 Q1053,400 1053,387 V305 Q1053,292 1066,292 Z" fill="#151514" /><path d="M1067,293 H1261 Q1273,293 1273,305 V385 Q1273,397 1261,397 H1067 Q1055,397 1055,385 V305 Q1055,293 1067,293 Z" fill="#3a3a38" /><path d="M1068,295 H1260 Q1271,295 1271,306 V382 Q1271,393 1260,393 H1068 Q1057,393 1057,382 V306 Q1057,295 1068,295 Z" fill="#323230" stroke="#484846" stroke-width="1.2" /><polygon points="1088,308 1242,308 1232,318 1098,318" fill="#272726" /><path d="M1099,308 H1231 Q1240,308 1240,317 V369 Q1240,378 1231,378 H1099 Q1090,378 1090,369 V317 Q1090,308 1099,308 Z" fill="none" stroke="#1e1e1d" stroke-width="2.5" /><rect x="1098" y="318" width="134" height="52" rx="4" fill="#353533" /><path d="M1098,370 H1232 L1240,377 H1090 Z" fill="#5c5c5a" /><path d="M1112,322 V365 M1218,322 V365" stroke="#262625" stroke-width="2" /><circle cx="1075" cy="340" r="7" fill="#4a4a48" /><circle cx="1075" cy="340" r="5.5" fill="#0b0b0b" /><circle cx="1259" cy="340" r="7" fill="#4a4a48" /><circle cx="1259" cy="340" r="5.5" fill="#0b0b0b" /><path d="M207,272 V258 Q207,251 214,251 H421 V292 H452 V247 Q452,237 442,237 H203 Q193,237 193,247 V272 Z" fill="#573a2d" /><path d="M179,272 V243 Q179,236 186,236 H397 V292 H423 V231 Q423,221 413,221 H175 Q165,221 165,231 V272 Z" fill="#536a82" /><path d="M225,271 Q225,256 240,256 H500 C525,256 537,263 537,280 V289" fill="none" stroke="#ece8de" stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="round" /><path d="M238,271 Q238,265 248,265 H447 Q455,265 455,273 V289 H537" fill="none" stroke="#ece8de" stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="round" /><path d="M600,256 H910 Q920,256 920,246 V229 Q920,219 910,219 H522 Q512,219 512,229 V244 C512,254 530,254 545,259 C556,263 560,268 560,280" fill="none" stroke="#ece8de" stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="round" /></svg>]]></data></image></element>
+	<element name="button" defstate="0"><image state="0"><data><![CDATA[<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 23 28"><rect x="0" y="0" width="24" height="28" rx="2.5" fill="#1c1d1f" /><rect x="1" y="0.8" width="22" height="26" rx="2" fill="#56595c" /><rect x="2.2" y="2" width="19.6" height="22.5" rx="1.5" fill="#46494c" /><rect x="2.2" y="2" width="19.6" height="1.2" fill="#6a6e72" /><rect x="8.5" y="6.4" width="7" height="4" rx="1.2" fill="#4a2232" /></svg>]]></data></image><image state="1"><data><![CDATA[<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 23 28"><rect x="0" y="0" width="24" height="28" rx="2.5" fill="#1c1d1f" /><rect x="1" y="0.8" width="22" height="26" rx="2" fill="#56595c" /><rect x="2.2" y="2" width="19.6" height="22.5" rx="1.5" fill="#46494c" /><rect x="2.2" y="2" width="19.6" height="1.2" fill="#6a6e72" /><rect x="6.5" y="4.4" width="11" height="8" rx="3" fill="#ff3c9e" fill-opacity="0.35" /><rect x="8.5" y="6.4" width="7" height="4" rx="1.2" fill="#ff3c9e" /></svg>]]></data></image></element>
+	<element name="slider_cap"><image><data><![CDATA[<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 16 10"><rect x="0" y="0" width="16" height="10" rx="1.5" fill="#1a1b1c" /><rect x="0.8" y="0.6" width="14.4" height="8.2" rx="1.2" fill="#8a8e91" /><rect x="0.8" y="4.2" width="14.4" height="1.6" fill="#2a2b2c" /><rect x="0.8" y="0.6" width="14.4" height="1" fill="#b0b4b6" /></svg>]]></data></image></element>
+	<element name="slider_area"><rect><color red="0.000" green="0.000" blue="0.000" alpha="0" /></rect></element>
+	<element name="vfd_char"><led16segsc><color red="0.220" green="0.847" blue="0.941" /></led16segsc></element>
+	<element name="txt0"><text string="RESET" align="1"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt1"><text string="WRITE-" align="1"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt2"><text string="PROT." align="1"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt3"><text string="VOICE"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt4"><text string="CONTROL"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt5"><text string="FUNCTIONS  FV"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt6"><text string="MIDI  EX20" align="1"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt7"><text string="EXPANDER" align="1"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt8"><text string="WAVE AND ENVELOPE SYNTHESIS"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt9"><text string="1"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt10"><text string="2"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt11"><text string="3"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt12"><text string="4"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt13"><text string="5"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt14"><text string="6"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt15"><text string="7"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt16"><text string="8"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt17"><text string="9"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt18"><text string="10"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt19"><text string="11"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt20"><text string="12"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt21"><text string="13"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt22"><text string="14"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt23"><text string="15"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt24"><text string="16"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt25"><text string="5 1/3"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt26"><text string="2 2/3"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt27"><text string="1 3/5"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt28"><text string="1 1/3"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt29"><text string="DRAWBAR 1"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt30"><text string="DRAWBAR 2"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt31"><text string="A"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt32"><text string="E"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt33"><text string="B"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt34"><text string="F"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt35"><text string="C"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt36"><text string="G"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt37"><text string="D"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt38"><text string="H"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt39"><text string="BASIS"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt40"><text string="CHAN"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt41"><text string="SEL"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt42"><text string="OMNI"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt43"><text string="OFF"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt44"><text string="MONO"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt45"><text string="POLY"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt46"><text string="MIDI"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt47"><text string="INTRN"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt48"><text string="KEYB"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt49"><text string="STOP"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt50"><text string="TONE"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt51"><text string="EVENT"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt52"><text string="WHL 1"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt53"><text string="WHL 2"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt54"><text string="SWELL"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt55"><text string="SNOE"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt56"><text string="TOUCH"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt57"><text string="INST"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt58"><text string="CHNG"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt59"><text string="SYST"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt60"><text string="EXCL"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt61"><text string="BAUD"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt62"><text string="RATE"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt63"><text string="MIDI IN"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt64"><text string="MIDI OUT"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt65"><text string="MIDI IN/OUT"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt66"><text string="SECOND KEYBOARD"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt67"><text string="MAIN KEYBOARD"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt68"><text string="M"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt69"><text string="S"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt70"><text string="T"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt71"><text string="R"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt72"><text string="VOLUME"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt73"><text string="PRESETS - RAM"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt74"><text string="VOICE CONTROL"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt75"><text string="SOURCE CONTROL"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt76"><text string="BANK"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt77"><text string="CARTR"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt78"><text string="WAL"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt79"><text string="PRESET"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt80"><text string="LIM"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt81"><text string="17"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt82"><text string="18"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt83"><text string="19"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt84"><text string="20-"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt85"><text string="DMS - INSTRUMENTS - ROM"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt86"><text string="CV - INST - RAM"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt87"><text string="CARTRIDGE"><color red="0.925" green="0.910" blue="0.871" /></text></element>
+	<element name="txt88"><text string="WERSI"><color red="0.149" green="0.149" blue="0.145" /></text></element>
+	<element name="txt89"><text string="CARTRIDGE"><color red="0.149" green="0.149" blue="0.145" /></text></element>
+
+	<view name="Front Panel">
+		<element ref="panel"><bounds x="5" y="4" width="1406" height="441" /></element>
+		<element ref="txt0"><bounds x="123.00" y="46.50" width="30.00" height="15.00" /></element>
+		<element ref="txt1"><bounds x="228.00" y="46.50" width="25.00" height="15.00" /></element>
+		<element ref="txt2"><bounds x="228.00" y="59.50" width="20.00" height="15.00" /></element>
+		<element ref="txt3"><bounds x="224.62" y="81.50" width="27.75" height="15.00" /></element>
+		<element ref="txt4"><bounds x="315.57" y="81.50" width="38.85" height="15.00" /></element>
+		<element ref="txt5"><bounds x="378.43" y="81.50" width="72.15" height="15.00" /></element>
+		<element ref="txt6"><bounds x="400.00" y="20.00" width="100.00" height="30.00" /></element>
+		<element ref="txt7"><bounds x="400.00" y="40.50" width="100.00" height="30.00" /></element>
+		<element name="vfd0" ref="vfd_char"><bounds x="184.50" y="139" width="13" height="26" /></element>
+		<element name="vfd1" ref="vfd_char"><bounds x="201.00" y="139" width="13" height="26" /></element>
+		<element name="vfd2" ref="vfd_char"><bounds x="217.50" y="139" width="13" height="26" /></element>
+		<element name="vfd3" ref="vfd_char"><bounds x="234.00" y="139" width="13" height="26" /></element>
+		<element name="vfd4" ref="vfd_char"><bounds x="250.50" y="139" width="13" height="26" /></element>
+		<element name="vfd5" ref="vfd_char"><bounds x="267.00" y="139" width="13" height="26" /></element>
+		<element name="vfd6" ref="vfd_char"><bounds x="283.50" y="139" width="13" height="26" /></element>
+		<element name="vfd7" ref="vfd_char"><bounds x="300.00" y="139" width="13" height="26" /></element>
+		<element name="vfd8" ref="vfd_char"><bounds x="316.50" y="139" width="13" height="26" /></element>
+		<element name="vfd9" ref="vfd_char"><bounds x="333.00" y="139" width="13" height="26" /></element>
+		<element name="vfd10" ref="vfd_char"><bounds x="349.50" y="139" width="13" height="26" /></element>
+		<element name="vfd11" ref="vfd_char"><bounds x="366.00" y="139" width="13" height="26" /></element>
+		<element name="vfd12" ref="vfd_char"><bounds x="382.50" y="139" width="13" height="26" /></element>
+		<element name="vfd13" ref="vfd_char"><bounds x="399.00" y="139" width="13" height="26" /></element>
+		<element name="vfd14" ref="vfd_char"><bounds x="415.50" y="139" width="13" height="26" /></element>
+		<element name="vfd15" ref="vfd_char"><bounds x="432.00" y="139" width="13" height="26" /></element>
+		<element ref="button"><bounds x="158.5" y="53" width="21" height="26" /></element>
+		<element ref="txt8"><bounds x="634.50" y="35.50" width="162.00" height="17.00" /></element>
+		<element ref="txt9"><bounds x="519.40" y="56.00" width="7.20" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="513.00" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB0" inputmask="0xff" /><bounds state="0" x="513.00" y="198" width="20" height="11" /><bounds state="255" x="513.00" y="89" width="20" height="11" /></element>
+		<element ref="txt10"><bounds x="545.20" y="56.00" width="7.20" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="538.80" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB1" inputmask="0xff" /><bounds state="0" x="538.80" y="198" width="20" height="11" /><bounds state="255" x="538.80" y="89" width="20" height="11" /></element>
+		<element ref="txt11"><bounds x="571.00" y="56.00" width="7.20" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="564.60" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB2" inputmask="0xff" /><bounds state="0" x="564.60" y="198" width="20" height="11" /><bounds state="255" x="564.60" y="89" width="20" height="11" /></element>
+		<element ref="txt12"><bounds x="596.80" y="56.00" width="7.20" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="590.40" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB3" inputmask="0xff" /><bounds state="0" x="590.40" y="198" width="20" height="11" /><bounds state="255" x="590.40" y="89" width="20" height="11" /></element>
+		<element ref="txt13"><bounds x="622.60" y="56.00" width="7.20" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="616.20" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB4" inputmask="0xff" /><bounds state="0" x="616.20" y="198" width="20" height="11" /><bounds state="255" x="616.20" y="89" width="20" height="11" /></element>
+		<element ref="txt14"><bounds x="648.40" y="56.00" width="7.20" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="642.00" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB5" inputmask="0xff" /><bounds state="0" x="642.00" y="198" width="20" height="11" /><bounds state="255" x="642.00" y="89" width="20" height="11" /></element>
+		<element ref="txt15"><bounds x="674.20" y="56.00" width="7.20" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="667.80" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB6" inputmask="0xff" /><bounds state="0" x="667.80" y="198" width="20" height="11" /><bounds state="255" x="667.80" y="89" width="20" height="11" /></element>
+		<element ref="txt16"><bounds x="700.00" y="56.00" width="7.20" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="693.60" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB7" inputmask="0xff" /><bounds state="0" x="693.60" y="198" width="20" height="11" /><bounds state="255" x="693.60" y="89" width="20" height="11" /></element>
+		<element ref="txt17"><bounds x="725.80" y="56.00" width="7.20" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="719.40" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB8" inputmask="0xff" /><bounds state="0" x="719.40" y="198" width="20" height="11" /><bounds state="255" x="719.40" y="89" width="20" height="11" /></element>
+		<element ref="txt18"><bounds x="748.54" y="56.00" width="13.32" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="745.20" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB9" inputmask="0xff" /><bounds state="0" x="745.20" y="198" width="20" height="11" /><bounds state="255" x="745.20" y="89" width="20" height="11" /></element>
+		<element ref="txt19"><bounds x="774.34" y="56.00" width="13.32" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="771.00" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB10" inputmask="0xff" /><bounds state="0" x="771.00" y="198" width="20" height="11" /><bounds state="255" x="771.00" y="89" width="20" height="11" /></element>
+		<element ref="txt20"><bounds x="800.14" y="56.00" width="13.32" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="796.80" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB11" inputmask="0xff" /><bounds state="0" x="796.80" y="198" width="20" height="11" /><bounds state="255" x="796.80" y="89" width="20" height="11" /></element>
+		<element ref="txt21"><bounds x="825.94" y="56.00" width="13.32" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="822.60" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB12" inputmask="0xff" /><bounds state="0" x="822.60" y="198" width="20" height="11" /><bounds state="255" x="822.60" y="89" width="20" height="11" /></element>
+		<element ref="txt22"><bounds x="851.74" y="56.00" width="13.32" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="848.40" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB13" inputmask="0xff" /><bounds state="0" x="848.40" y="198" width="20" height="11" /><bounds state="255" x="848.40" y="89" width="20" height="11" /></element>
+		<element ref="txt23"><bounds x="877.54" y="56.00" width="13.32" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="874.20" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB14" inputmask="0xff" /><bounds state="0" x="874.20" y="198" width="20" height="11" /><bounds state="255" x="874.20" y="89" width="20" height="11" /></element>
+		<element ref="txt24"><bounds x="903.34" y="56.00" width="13.32" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="900.00" y="86" width="20" height="126" /></element>
+		<element ref="slider_cap"><animate inputtag="DB15" inputmask="0xff" /><bounds state="0" x="900.00" y="198" width="20" height="11" /><bounds state="255" x="900.00" y="89" width="20" height="11" /></element>
+		<element ref="txt24"><bounds x="517.00" y="223.00" width="12.00" height="18.00" /></element>
+		<element ref="txt16"><bounds x="545.80" y="223.00" width="6.00" height="18.00" /></element>
+		<element ref="txt25"><bounds x="563.60" y="223.00" width="22.00" height="18.00" /></element>
+		<element ref="txt12"><bounds x="597.40" y="223.00" width="6.00" height="18.00" /></element>
+		<element ref="txt26"><bounds x="615.20" y="223.00" width="22.00" height="18.00" /></element>
+		<element ref="txt10"><bounds x="649.00" y="223.00" width="6.00" height="18.00" /></element>
+		<element ref="txt27"><bounds x="666.80" y="223.00" width="22.00" height="18.00" /></element>
+		<element ref="txt28"><bounds x="692.60" y="223.00" width="22.00" height="18.00" /></element>
+		<element ref="txt9"><bounds x="726.40" y="223.00" width="6.00" height="18.00" /></element>
+		<element ref="txt16"><bounds x="752.20" y="223.00" width="6.00" height="18.00" /></element>
+		<element ref="txt12"><bounds x="778.00" y="223.00" width="6.00" height="18.00" /></element>
+		<element ref="txt26"><bounds x="795.80" y="223.00" width="22.00" height="18.00" /></element>
+		<element ref="txt10"><bounds x="829.60" y="223.00" width="6.00" height="18.00" /></element>
+		<element ref="txt27"><bounds x="847.40" y="223.00" width="22.00" height="18.00" /></element>
+		<element ref="txt28"><bounds x="873.20" y="223.00" width="22.00" height="18.00" /></element>
+		<element ref="txt9"><bounds x="907.00" y="223.00" width="6.00" height="18.00" /></element>
+		<element ref="txt29"><bounds x="599.70" y="237.50" width="56.61" height="17.00" /></element>
+		<element ref="txt30"><bounds x="801.70" y="237.50" width="56.61" height="17.00" /></element>
+		<element ref="txt9"><bounds x="1000.40" y="28.00" width="7.20" height="18.00" /></element>
+		<element name="K1_00" ref="button" inputtag="K1" inputmask="0x01"><bounds x="992.00" y="49.50" width="24" height="28" /></element>
+		<element ref="txt10"><bounds x="1030.40" y="28.00" width="7.20" height="18.00" /></element>
+		<element name="K1_01" ref="button" inputtag="K1" inputmask="0x02"><bounds x="1022.00" y="49.50" width="24" height="28" /></element>
+		<element ref="txt11"><bounds x="1060.40" y="28.00" width="7.20" height="18.00" /></element>
+		<element name="K1_02" ref="button" inputtag="K1" inputmask="0x04"><bounds x="1052.00" y="49.50" width="24" height="28" /></element>
+		<element ref="txt12"><bounds x="1090.40" y="28.00" width="7.20" height="18.00" /></element>
+		<element name="K1_03" ref="button" inputtag="K1" inputmask="0x08"><bounds x="1082.00" y="49.50" width="24" height="28" /></element>
+		<element ref="txt13"><bounds x="1120.40" y="28.00" width="7.20" height="18.00" /></element>
+		<element name="K1_04" ref="button" inputtag="K1" inputmask="0x10"><bounds x="1112.00" y="49.50" width="24" height="28" /></element>
+		<element ref="txt14"><bounds x="1150.40" y="28.00" width="7.20" height="18.00" /></element>
+		<element name="K1_05" ref="button" inputtag="K1" inputmask="0x20"><bounds x="1142.00" y="49.50" width="24" height="28" /></element>
+		<element ref="txt15"><bounds x="1180.40" y="28.00" width="7.20" height="18.00" /></element>
+		<element name="K1_06" ref="button" inputtag="K1" inputmask="0x40"><bounds x="1172.00" y="49.50" width="24" height="28" /></element>
+		<element ref="txt16"><bounds x="1210.40" y="28.00" width="7.20" height="18.00" /></element>
+		<element name="K1_07" ref="button" inputtag="K1" inputmask="0x80"><bounds x="1202.00" y="49.50" width="24" height="28" /></element>
+		<element ref="txt31"><bounds x="931.40" y="92.00" width="7.20" height="18.00" /></element>
+		<element ref="txt32"><bounds x="1282.40" y="92.00" width="7.20" height="18.00" /></element>
+		<element name="K0_00" ref="button" inputtag="K0" inputmask="0x01"><bounds x="945.50" y="87.00" width="24" height="28" /></element>
+		<element name="K0_04" ref="button" inputtag="K0" inputmask="0x10"><bounds x="1249.50" y="87.00" width="24" height="28" /></element>
+		<element ref="txt33"><bounds x="931.40" y="125.00" width="7.20" height="18.00" /></element>
+		<element ref="txt34"><bounds x="1282.40" y="125.00" width="7.20" height="18.00" /></element>
+		<element name="K0_01" ref="button" inputtag="K0" inputmask="0x02"><bounds x="945.50" y="120.00" width="24" height="28" /></element>
+		<element name="K0_05" ref="button" inputtag="K0" inputmask="0x20"><bounds x="1249.50" y="120.00" width="24" height="28" /></element>
+		<element ref="txt35"><bounds x="931.40" y="158.00" width="7.20" height="18.00" /></element>
+		<element ref="txt36"><bounds x="1282.40" y="158.00" width="7.20" height="18.00" /></element>
+		<element name="K0_02" ref="button" inputtag="K0" inputmask="0x04"><bounds x="945.50" y="153.00" width="24" height="28" /></element>
+		<element name="K0_06" ref="button" inputtag="K0" inputmask="0x40"><bounds x="1249.50" y="153.00" width="24" height="28" /></element>
+		<element ref="txt37"><bounds x="931.40" y="191.00" width="7.20" height="18.00" /></element>
+		<element ref="txt38"><bounds x="1282.40" y="191.00" width="7.20" height="18.00" /></element>
+		<element name="K0_03" ref="button" inputtag="K0" inputmask="0x08"><bounds x="945.50" y="186.00" width="24" height="28" /></element>
+		<element name="K0_07" ref="button" inputtag="K0" inputmask="0x80"><bounds x="1249.50" y="186.00" width="24" height="28" /></element>
+		<element ref="txt39"><bounds x="986.58" y="93.50" width="29.60" height="16.00" /></element>
+		<element ref="txt40"><bounds x="989.53" y="106.50" width="23.68" height="16.00" /></element>
+		<element ref="txt41"><bounds x="1023.25" y="100.00" width="17.76" height="16.00" /></element>
+		<element ref="txt42"><bounds x="1051.04" y="93.50" width="23.68" height="16.00" /></element>
+		<element ref="txt43"><bounds x="1053.99" y="106.50" width="17.76" height="16.00" /></element>
+		<element ref="txt41"><bounds x="1084.74" y="100.00" width="17.76" height="16.00" /></element>
+		<element ref="txt42"><bounds x="1112.54" y="93.50" width="23.68" height="16.00" /></element>
+		<element ref="txt43"><bounds x="1115.49" y="106.50" width="17.76" height="16.00" /></element>
+		<element ref="txt44"><bounds x="1143.29" y="93.50" width="23.68" height="16.00" /></element>
+		<element ref="txt45"><bounds x="1143.29" y="106.50" width="23.68" height="16.00" /></element>
+		<element ref="txt46"><bounds x="1174.04" y="93.50" width="23.68" height="16.00" /></element>
+		<element ref="txt40"><bounds x="1174.04" y="106.50" width="23.68" height="16.00" /></element>
+		<element ref="txt47"><bounds x="1201.83" y="93.50" width="29.60" height="16.00" /></element>
+		<element ref="txt48"><bounds x="1204.79" y="106.50" width="23.68" height="16.00" /></element>
+		<element ref="txt49"><bounds x="989.53" y="132.50" width="23.68" height="16.00" /></element>
+		<element ref="txt50"><bounds x="1020.28" y="126.00" width="23.68" height="16.00" /></element>
+		<element ref="txt51"><bounds x="1017.33" y="139.00" width="29.60" height="16.00" /></element>
+		<element ref="txt52"><bounds x="1048.08" y="132.50" width="29.60" height="16.00" /></element>
+		<element ref="txt53"><bounds x="1078.83" y="132.50" width="29.60" height="16.00" /></element>
+		<element ref="txt54"><bounds x="1109.58" y="126.00" width="29.60" height="16.00" /></element>
+		<element ref="txt55"><bounds x="1112.54" y="139.00" width="23.68" height="16.00" /></element>
+		<element ref="txt56"><bounds x="1140.33" y="132.50" width="29.60" height="16.00" /></element>
+		<element ref="txt57"><bounds x="1174.04" y="126.00" width="23.68" height="16.00" /></element>
+		<element ref="txt58"><bounds x="1174.04" y="139.00" width="23.68" height="16.00" /></element>
+		<element ref="txt59"><bounds x="1204.79" y="126.00" width="23.68" height="16.00" /></element>
+		<element ref="txt60"><bounds x="1204.79" y="139.00" width="23.68" height="16.00" /></element>
+		<element ref="txt49"><bounds x="989.53" y="165.00" width="23.68" height="16.00" /></element>
+		<element ref="txt50"><bounds x="1020.28" y="158.50" width="23.68" height="16.00" /></element>
+		<element ref="txt51"><bounds x="1017.33" y="171.50" width="29.60" height="16.00" /></element>
+		<element ref="txt52"><bounds x="1048.08" y="165.00" width="29.60" height="16.00" /></element>
+		<element ref="txt53"><bounds x="1078.83" y="165.00" width="29.60" height="16.00" /></element>
+		<element ref="txt54"><bounds x="1109.58" y="158.50" width="29.60" height="16.00" /></element>
+		<element ref="txt55"><bounds x="1112.54" y="171.50" width="23.68" height="16.00" /></element>
+		<element ref="txt56"><bounds x="1140.33" y="165.00" width="29.60" height="16.00" /></element>
+		<element ref="txt57"><bounds x="1174.04" y="158.50" width="23.68" height="16.00" /></element>
+		<element ref="txt58"><bounds x="1174.04" y="171.50" width="23.68" height="16.00" /></element>
+		<element ref="txt59"><bounds x="1204.79" y="158.50" width="23.68" height="16.00" /></element>
+		<element ref="txt60"><bounds x="1204.79" y="171.50" width="23.68" height="16.00" /></element>
+		<element ref="txt61"><bounds x="989.53" y="188.50" width="23.68" height="16.00" /></element>
+		<element ref="txt62"><bounds x="989.53" y="201.50" width="23.68" height="16.00" /></element>
+		<element ref="txt41"><bounds x="1023.25" y="188.50" width="17.76" height="16.00" /></element>
+		<element ref="txt57"><bounds x="1020.28" y="201.50" width="23.68" height="16.00" /></element>
+		<element ref="txt48"><bounds x="1051.04" y="188.50" width="23.68" height="16.00" /></element>
+		<element ref="txt11"><bounds x="1059.67" y="201.50" width="6.40" height="16.00" /></element>
+		<element ref="txt48"><bounds x="1081.79" y="188.50" width="23.68" height="16.00" /></element>
+		<element ref="txt12"><bounds x="1090.42" y="201.50" width="6.40" height="16.00" /></element>
+		<element ref="txt48"><bounds x="1112.54" y="188.50" width="23.68" height="16.00" /></element>
+		<element ref="txt13"><bounds x="1121.17" y="201.50" width="6.40" height="16.00" /></element>
+		<element ref="txt48"><bounds x="1143.29" y="188.50" width="23.68" height="16.00" /></element>
+		<element ref="txt14"><bounds x="1151.92" y="201.50" width="6.40" height="16.00" /></element>
+		<element ref="txt48"><bounds x="1174.04" y="188.50" width="23.68" height="16.00" /></element>
+		<element ref="txt15"><bounds x="1182.67" y="201.50" width="6.40" height="16.00" /></element>
+		<element ref="txt48"><bounds x="1204.79" y="188.50" width="23.68" height="16.00" /></element>
+		<element ref="txt16"><bounds x="1213.42" y="201.50" width="6.40" height="16.00" /></element>
+		<element ref="txt63"><bounds x="998.28" y="220.50" width="41.44" height="16.00" /></element>
+		<element ref="txt64"><bounds x="1053.82" y="220.50" width="47.36" height="16.00" /></element>
+		<element ref="txt65"><bounds x="1137.44" y="220.50" width="65.12" height="16.00" /></element>
+		<element ref="txt66"><bounds x="238.60" y="220.50" width="88.80" height="16.00" /></element>
+		<element ref="txt67"><bounds x="276.52" y="236.00" width="76.96" height="16.00" /></element>
+		<element ref="txt68"><bounds x="125.70" y="297.50" width="7.60" height="19.00" /></element>
+		<element ref="txt31"><bounds x="125.70" y="312.00" width="7.60" height="19.00" /></element>
+		<element ref="txt69"><bounds x="125.70" y="326.50" width="7.60" height="19.00" /></element>
+		<element ref="txt70"><bounds x="125.70" y="341.00" width="7.60" height="19.00" /></element>
+		<element ref="txt32"><bounds x="125.70" y="355.50" width="7.60" height="19.00" /></element>
+		<element ref="txt71"><bounds x="125.70" y="370.00" width="7.60" height="19.00" /></element>
+		<element ref="txt72"><bounds x="166.02" y="407.00" width="39.96" height="18.00" /></element>
+		<element ref="slider_area"><bounds x="135.00" y="288" width="16" height="111" /></element>
+		<element ref="slider_cap"><animate inputtag="MAINVOL" inputmask="0xff" /><bounds state="0" x="135.00" y="386" width="16" height="10" /><bounds state="255" x="135.00" y="291" width="16" height="10" /></element>
+		<element ref="slider_cap"><bounds x="165" y="386" width="16" height="10" /></element>
+		<element ref="slider_cap"><bounds x="194" y="386" width="16" height="10" /></element>
+		<element ref="slider_cap"><bounds x="224" y="386" width="16" height="10" /></element>
+		<element ref="txt9"><bounds x="270.40" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt13"><bounds x="270.40" y="407.00" width="7.20" height="18.00" /></element>
+		<element name="K7_00" ref="button" inputtag="K7" inputmask="0x01"><bounds x="262.50" y="296.00" width="23" height="28" /></element>
+		<element name="K7_04" ref="button" inputtag="K7" inputmask="0x10"><bounds x="262.50" y="372.50" width="23" height="28" /></element>
+		<element ref="txt10"><bounds x="298.90" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt14"><bounds x="298.90" y="407.00" width="7.20" height="18.00" /></element>
+		<element name="K7_01" ref="button" inputtag="K7" inputmask="0x02"><bounds x="291.00" y="296.00" width="23" height="28" /></element>
+		<element name="K7_05" ref="button" inputtag="K7" inputmask="0x20"><bounds x="291.00" y="372.50" width="23" height="28" /></element>
+		<element ref="txt11"><bounds x="327.40" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt15"><bounds x="327.40" y="407.00" width="7.20" height="18.00" /></element>
+		<element name="K7_02" ref="button" inputtag="K7" inputmask="0x04"><bounds x="319.50" y="296.00" width="23" height="28" /></element>
+		<element name="K7_06" ref="button" inputtag="K7" inputmask="0x40"><bounds x="319.50" y="372.50" width="23" height="28" /></element>
+		<element ref="txt12"><bounds x="355.90" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt16"><bounds x="355.90" y="407.00" width="7.20" height="18.00" /></element>
+		<element name="K7_03" ref="button" inputtag="K7" inputmask="0x08"><bounds x="348.00" y="296.00" width="23" height="28" /></element>
+		<element name="K7_07" ref="button" inputtag="K7" inputmask="0x80"><bounds x="348.00" y="372.50" width="23" height="28" /></element>
+		<element ref="txt73"><bounds x="265.00" y="337.00" width="103.00" height="26.00" /></element>
+		<element ref="txt3"><bounds x="479.20" y="260.00" width="29.60" height="16.00" /></element>
+		<element ref="txt10"><bounds x="405.90" y="273.50" width="7.20" height="18.00" /></element>
+		<element ref="txt9"><bounds x="432.90" y="273.50" width="7.20" height="18.00" /></element>
+		<element ref="txt10"><bounds x="464.40" y="273.50" width="7.20" height="18.00" /></element>
+		<element ref="txt11"><bounds x="491.90" y="273.50" width="7.20" height="18.00" /></element>
+		<element ref="txt12"><bounds x="519.40" y="273.50" width="7.20" height="18.00" /></element>
+		<element name="K6_00" ref="button" inputtag="K6" inputmask="0x01"><bounds x="398.00" y="296.00" width="23" height="28" /></element>
+		<element name="K6_01" ref="button" inputtag="K6" inputmask="0x02"><bounds x="425.00" y="296.00" width="23" height="28" /></element>
+		<element name="K6_02" ref="button" inputtag="K6" inputmask="0x04"><bounds x="456.50" y="296.00" width="23" height="28" /></element>
+		<element name="K6_03" ref="button" inputtag="K6" inputmask="0x08"><bounds x="484.00" y="296.00" width="23" height="28" /></element>
+		<element name="K6_04" ref="button" inputtag="K6" inputmask="0x10"><bounds x="511.50" y="296.00" width="23" height="28" /></element>
+		<element ref="txt74"><bounds x="430.52" y="329.50" width="76.96" height="16.00" /></element>
+		<element ref="txt75"><bounds x="427.56" y="353.00" width="82.88" height="16.00" /></element>
+		<element ref="txt76"><bounds x="397.66" y="403.00" width="23.68" height="16.00" /></element>
+		<element ref="txt77"><bounds x="422.20" y="403.00" width="29.60" height="16.00" /></element>
+		<element ref="txt76"><bounds x="454.16" y="403.00" width="23.68" height="16.00" /></element>
+		<element ref="txt77"><bounds x="479.70" y="403.00" width="29.60" height="16.00" /></element>
+		<element ref="txt78"><bounds x="514.12" y="403.00" width="17.76" height="16.00" /></element>
+		<element ref="txt79"><bounds x="406.35" y="416.50" width="33.30" height="15.00" /></element>
+		<element ref="txt3"><bounds x="467.12" y="416.50" width="27.75" height="15.00" /></element>
+		<element ref="txt80"><bounds x="518.67" y="416.50" width="16.65" height="15.00" /></element>
+		<element name="K6_05" ref="button" inputtag="K6" inputmask="0x20"><bounds x="398.00" y="372.00" width="23" height="28" /></element>
+		<element name="K6_06" ref="button" inputtag="K6" inputmask="0x40"><bounds x="425.50" y="372.00" width="23" height="28" /></element>
+		<element name="K6_07" ref="button" inputtag="K6" inputmask="0x80"><bounds x="454.50" y="372.00" width="23" height="28" /></element>
+		<element name="K2_00" ref="button" inputtag="K2" inputmask="0x01"><bounds x="483.00" y="372.00" width="23" height="28" /></element>
+		<element name="K2_01" ref="button" inputtag="K2" inputmask="0x02"><bounds x="511.50" y="372.00" width="23" height="28" /></element>
+		<element ref="txt9"><bounds x="572.40" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt19"><bounds x="569.34" y="407.00" width="13.32" height="18.00" /></element>
+		<element name="K2_02" ref="button" inputtag="K2" inputmask="0x04"><bounds x="564.50" y="295.00" width="23" height="28" /></element>
+		<element name="K3_04" ref="button" inputtag="K3" inputmask="0x10"><bounds x="564.50" y="371.50" width="23" height="28" /></element>
+		<element ref="txt10"><bounds x="601.00" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt20"><bounds x="597.94" y="407.00" width="13.32" height="18.00" /></element>
+		<element name="K2_03" ref="button" inputtag="K2" inputmask="0x08"><bounds x="593.10" y="295.00" width="23" height="28" /></element>
+		<element name="K3_05" ref="button" inputtag="K3" inputmask="0x20"><bounds x="593.10" y="371.50" width="23" height="28" /></element>
+		<element ref="txt11"><bounds x="629.60" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt21"><bounds x="626.54" y="407.00" width="13.32" height="18.00" /></element>
+		<element name="K2_04" ref="button" inputtag="K2" inputmask="0x10"><bounds x="621.70" y="295.00" width="23" height="28" /></element>
+		<element name="K3_06" ref="button" inputtag="K3" inputmask="0x40"><bounds x="621.70" y="371.50" width="23" height="28" /></element>
+		<element ref="txt12"><bounds x="658.20" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt22"><bounds x="655.14" y="407.00" width="13.32" height="18.00" /></element>
+		<element name="K2_05" ref="button" inputtag="K2" inputmask="0x20"><bounds x="650.30" y="295.00" width="23" height="28" /></element>
+		<element name="K3_07" ref="button" inputtag="K3" inputmask="0x80"><bounds x="650.30" y="371.50" width="23" height="28" /></element>
+		<element ref="txt13"><bounds x="686.80" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt23"><bounds x="683.74" y="407.00" width="13.32" height="18.00" /></element>
+		<element name="K2_06" ref="button" inputtag="K2" inputmask="0x40"><bounds x="678.90" y="295.00" width="23" height="28" /></element>
+		<element name="K4_00" ref="button" inputtag="K4" inputmask="0x01"><bounds x="678.90" y="371.50" width="23" height="28" /></element>
+		<element ref="txt14"><bounds x="715.40" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt24"><bounds x="712.34" y="407.00" width="13.32" height="18.00" /></element>
+		<element name="K2_07" ref="button" inputtag="K2" inputmask="0x80"><bounds x="707.50" y="295.00" width="23" height="28" /></element>
+		<element name="K4_01" ref="button" inputtag="K4" inputmask="0x02"><bounds x="707.50" y="371.50" width="23" height="28" /></element>
+		<element ref="txt15"><bounds x="744.00" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt81"><bounds x="740.94" y="407.00" width="13.32" height="18.00" /></element>
+		<element name="K3_00" ref="button" inputtag="K3" inputmask="0x01"><bounds x="736.10" y="295.00" width="23" height="28" /></element>
+		<element name="K4_02" ref="button" inputtag="K4" inputmask="0x04"><bounds x="736.10" y="371.50" width="23" height="28" /></element>
+		<element ref="txt16"><bounds x="772.60" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt82"><bounds x="769.54" y="407.00" width="13.32" height="18.00" /></element>
+		<element name="K3_01" ref="button" inputtag="K3" inputmask="0x02"><bounds x="764.70" y="295.00" width="23" height="28" /></element>
+		<element name="K4_03" ref="button" inputtag="K4" inputmask="0x08"><bounds x="764.70" y="371.50" width="23" height="28" /></element>
+		<element ref="txt17"><bounds x="801.20" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt83"><bounds x="798.14" y="407.00" width="13.32" height="18.00" /></element>
+		<element name="K3_02" ref="button" inputtag="K3" inputmask="0x04"><bounds x="793.30" y="295.00" width="23" height="28" /></element>
+		<element name="K4_04" ref="button" inputtag="K4" inputmask="0x10"><bounds x="793.30" y="371.50" width="23" height="28" /></element>
+		<element ref="txt18"><bounds x="826.74" y="276.00" width="13.32" height="18.00" /></element>
+		<element ref="txt84"><bounds x="825.41" y="407.00" width="19.98" height="18.00" /></element>
+		<element name="K3_03" ref="button" inputtag="K3" inputmask="0x08"><bounds x="821.90" y="295.00" width="23" height="28" /></element>
+		<element name="K4_05" ref="button" inputtag="K4" inputmask="0x20"><bounds x="821.90" y="371.50" width="23" height="28" /></element>
+		<element ref="txt85"><bounds x="613.00" y="337.00" width="186.00" height="26.00" /></element>
+		<element ref="txt9"><bounds x="883.40" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt14"><bounds x="883.40" y="407.00" width="7.20" height="18.00" /></element>
+		<element name="K4_06" ref="button" inputtag="K4" inputmask="0x40"><bounds x="875.50" y="293.50" width="23" height="28" /></element>
+		<element name="K5_03" ref="button" inputtag="K5" inputmask="0x08"><bounds x="875.50" y="371.50" width="23" height="28" /></element>
+		<element ref="txt10"><bounds x="912.65" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt15"><bounds x="912.65" y="407.00" width="7.20" height="18.00" /></element>
+		<element name="K4_07" ref="button" inputtag="K4" inputmask="0x80"><bounds x="904.75" y="293.50" width="23" height="28" /></element>
+		<element name="K5_04" ref="button" inputtag="K5" inputmask="0x10"><bounds x="904.75" y="371.50" width="23" height="28" /></element>
+		<element ref="txt11"><bounds x="941.90" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt16"><bounds x="941.90" y="407.00" width="7.20" height="18.00" /></element>
+		<element name="K5_00" ref="button" inputtag="K5" inputmask="0x01"><bounds x="934.00" y="293.50" width="23" height="28" /></element>
+		<element name="K5_05" ref="button" inputtag="K5" inputmask="0x20"><bounds x="934.00" y="371.50" width="23" height="28" /></element>
+		<element ref="txt12"><bounds x="971.15" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt17"><bounds x="971.15" y="407.00" width="7.20" height="18.00" /></element>
+		<element name="K5_01" ref="button" inputtag="K5" inputmask="0x02"><bounds x="963.25" y="293.50" width="23" height="28" /></element>
+		<element name="K5_06" ref="button" inputtag="K5" inputmask="0x40"><bounds x="963.25" y="371.50" width="23" height="28" /></element>
+		<element ref="txt13"><bounds x="1000.40" y="276.00" width="7.20" height="18.00" /></element>
+		<element ref="txt18"><bounds x="997.34" y="407.00" width="13.32" height="18.00" /></element>
+		<element name="K5_02" ref="button" inputtag="K5" inputmask="0x04"><bounds x="992.50" y="293.50" width="23" height="28" /></element>
+		<element name="K5_07" ref="button" inputtag="K5" inputmask="0x80"><bounds x="992.50" y="371.50" width="23" height="28" /></element>
+		<element ref="txt86"><bounds x="894.00" y="337.00" width="104.00" height="26.00" /></element>
+		<element ref="txt87"><bounds x="1135.36" y="275.00" width="53.28" height="16.00" /></element>
+		<element ref="txt88"><bounds x="1125.00" y="324.00" width="80.00" height="20.00" /></element>
+		<element ref="txt89"><bounds x="1125.00" y="342.00" width="80.00" height="20.00" /></element>
 	</view>
 </mamelayout>
