@@ -49,6 +49,9 @@ struct plugin_panel
 		std::int32_t x, y;       // pixels of the requested size
 		std::uint32_t buttons;   // bit 0 is the primary button
 		bool leave;
+		bool view = false;       // vx, vy are given instead of x, y
+		bool move = false;       // the buttons didn't change, set when queued
+		float vx = 0.0f, vy = 0.0f;   // 0..1 across the view (mp_layout_pointer)
 	};
 
 	static constexpr std::size_t MAX_POINTER_EVENTS = 256;
@@ -72,6 +75,7 @@ struct plugin_panel
 	std::uint32_t width = 0;
 	std::uint32_t height = 0;
 	std::vector<pointer_event> pointers;
+	std::uint32_t queued_buttons[64] = { };   // buttons of each pointer's last queued event
 
 	// latest list built by the emulation thread
 	render_primitive_list *list = nullptr;

@@ -774,18 +774,25 @@ static void push_pointer(mp_instance *instance, plugin_panel::pointer_event cons
 	plugin_panel &panel = instance->io.panel;
 	std::lock_guard<std::mutex> lock(panel.mutex);
 
-	// a move replaces the previous one if no buttons changed in between
-	if (!event.leave && !panel.pointers.empty())
+	// a move replaces the previous one if that was a move too: an event
+	// changing the buttons must stay, a drag measures from where it began
+	bool const move = !event.leave && (event.buttons == panel.queued_buttons[event.id]);
+	panel.queued_buttons[event.id] = event.leave ? 0 : event.buttons;
+	if (move && !panel.pointers.empty())
 	{
 		plugin_panel::pointer_event &last = panel.pointers.back();
-		if (!last.leave && (last.id == event.id) && (last.buttons == event.buttons))
+		if (last.move && (last.id == event.id))
 		{
 			last = event;
+			last.move = true;
 			return;
 		}
 	}
 	if (panel.pointers.size() < plugin_panel::MAX_POINTER_EVENTS)
+	{
 		panel.pointers.push_back(event);
+		panel.pointers.back().move = move;
+	}
 }
 
 void mp_panel_pointer(mp_instance *instance, uint32_t id, int32_t x, int32_t y, uint32_t buttons)
@@ -834,6 +841,15 @@ uint64_t mp_layout_states(mp_instance *instance, uint64_t serial, mp_layout_item
 int mp_layout_element_image(mp_instance *instance, uint32_t element, uint32_t state, uint32_t orientation, uint32_t width, uint32_t height, void *rgba)
 {
 	return instance->io.panel.draw_element(element, state, orientation, width, height, rgba) ? 1 : 0;
+}
+
+void mp_layout_pointer(mp_instance *instance, uint32_t id, float x, float y, uint32_t buttons)
+{
+	plugin_panel::pointer_event event{ id, 0, 0, buttons, false };
+	event.view = true;
+	event.vx = x;
+	event.vy = y;
+	push_pointer(instance, event);
 }
 
 void mp_layout_input(mp_instance *instance, uint64_t layout_serial, uint32_t item, int pressed)

@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <bit>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <type_traits>
 #include <unordered_map>
@@ -686,12 +687,14 @@ void plugin_osd_interface::update_panel()
 	}
 
 	plugin_panel &panel = m_io.panel;
-	u32 width, height;
+	u32 width, height, natural_width, natural_height;
 	bool consumed, layout_requested;
 	{
 		std::lock_guard<std::mutex> lock(panel.mutex);
 		width = panel.width;
 		height = panel.height;
+		natural_width = panel.natural_width;
+		natural_height = panel.natural_height;
 		consumed = panel.fetched == panel.serial;
 		layout_requested = panel.layout_requested;
 		m_layout_input_events.insert(m_layout_input_events.end(), panel.layout_inputs.begin(), panel.layout_inputs.end());
@@ -739,10 +742,21 @@ void plugin_osd_interface::update_panel()
 		input.field->port().frame_update();
 	}
 
-	if (!width || !height)
+	// a host drawing the layout itself gives pointers in view coordinates;
+	// without a frame size the target keeps the layout's natural size to
+	// map them, and builds no frames
+	bool const framed = width && height;
+	if (!framed)
 	{
-		m_pointer_events.clear();
-		return;
+		if (!layout_requested)
+		{
+			m_pointer_events.clear();
+			return;
+		}
+		width = natural_width;
+		height = natural_height;
+		if (!width || !height)
+			return;
 	}
 	while (m_pointer_events.size() > plugin_panel::MAX_POINTER_EVENTS)
 		m_pointer_events.pop_front();
@@ -750,6 +764,12 @@ void plugin_osd_interface::update_panel()
 	bool const resized = (s32(width) != m_target->width()) || (s32(height) != m_target->height());
 	if (resized)
 		m_target->set_bounds(width, height);
+
+	// view coordinates go through the visible area the target maps its
+	// pixels with, which can be smaller than the target
+	s32 viswidth, visheight;
+	m_target->compute_visible_area(width, height, m_target->pixel_aspect(), m_target->orientation(), viswidth, visheight);
+	float const visx = float(s32(width) - viswidth) / 2, visy = float(s32(height) - visheight) / 2;
 
 	// clicks on the layout's controls; the inputs are only looked at once
 	// a frame and machines scan them even less often, so each button state
@@ -766,6 +786,8 @@ void plugin_osd_interface::update_panel()
 		}
 		u32 const previous = m_pointer_buttons[event.id];
 		u32 const buttons = event.leave ? 0 : event.buttons;
+		s32 const x = event.view ? s32(std::lround(visx + event.vx * float(viswidth))) : event.x;
+		s32 const y = event.view ? s32(std::lround(visy + event.vy * float(visheight))) : event.y;
 		if (buttons != previous)
 		{
 			if ((now_emulated - m_pointer_changed[event.id]) < PANEL_MIN_HOLD)
@@ -775,13 +797,13 @@ void plugin_osd_interface::update_panel()
 
 		if (event.leave)
 		{
-			m_target->pointer_left(osd::ui_event_handler::pointer::MOUSE, event.id, 0, event.x, event.y, previous, 0);
+			m_target->pointer_left(osd::ui_event_handler::pointer::MOUSE, event.id, 0, x, y, previous, 0);
 		}
 		else
 		{
 			u32 const pressed = buttons & ~previous;
 			u32 const released = previous & ~buttons;
-			m_target->pointer_updated(osd::ui_event_handler::pointer::MOUSE, event.id, 0, event.x, event.y, buttons, pressed, released, BIT(pressed, 0) ? 1 : 0);
+			m_target->pointer_updated(osd::ui_event_handler::pointer::MOUSE, event.id, 0, x, y, buttons, pressed, released, BIT(pressed, 0) ? 1 : 0);
 		}
 		m_pointer_buttons[event.id] = buttons;
 		m_pointer_events.pop_front();
@@ -789,6 +811,9 @@ void plugin_osd_interface::update_panel()
 	}
 	if (updated)
 		m_target->update_pointer_fields();
+
+	if (!framed)
+		return;
 
 	// build a new list when the GUI drew the last one, at a limited rate;
 	// the target alternates between two lists, so the one rebuilt here is

@@ -226,6 +226,12 @@ MP_API int mp_layout_element_image(mp_instance *instance, uint32_t element, uint
    its size either way.  Returns its serial, or the passed one. */
 MP_API uint64_t mp_layout_screen(mp_instance *instance, uint32_t screen, uint64_t serial, uint32_t *width, uint32_t *height, void *rgba, size_t size);
 
+/* pointer input in view coordinates (0..1 across the view, as the items'
+   bounds), handled like mp_panel_pointer: MAME presses clickable items and
+   the layout's knobs and sliders follow drags.  mp_panel_pointer_leave
+   ends it. */
+MP_API void mp_layout_pointer(mp_instance *instance, uint32_t id, float x, float y, uint32_t buttons);
+
 /* presses or releases the input of a clickable item of the description
    with the given serial (ignored for another one); each state is held for
    at least 50 ms of emulated time */
