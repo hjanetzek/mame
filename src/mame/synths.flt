@@ -2,6 +2,7 @@ yamaha/fb01.cpp
 yamaha/ymtx81z.cpp
 yamaha/ymdx100.cpp
 yamaha/ymmu50.cpp
+yamaha/ympsr60.cpp
 ensoniq/esq1.cpp
 ensoniq/esq5505.cpp
 korg/poly800.cpp
