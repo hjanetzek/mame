@@ -105,7 +105,7 @@ bool get_u32(u8 const *&ptr, u8 const *end, u32 &value)
 	return true;
 }
 
-std::vector<u8> collect_nvram(running_machine &machine)
+std::vector<u8> collect_nvram(running_machine &machine, plugin_io const &io)
 {
 	std::vector<u8> result(std::begin(NVRAM_MAGIC), std::end(NVRAM_MAGIC));
 	put_u32(result, NVRAM_VERSION);
@@ -139,15 +139,27 @@ std::vector<u8> collect_nvram(running_machine &machine)
 	{
 		for (ioport_field &field : port.second->fields())
 		{
-			if (field.type() != IPT_ADJUSTER)
+			// adjusters, and the analog fields of the layout's controls
+			u32 value;
+			if (field.type() == IPT_ADJUSTER)
+			{
+				ioport_field::user_settings settings;
+				field.get_user_settings(settings);
+				value = u32(settings.value);
+			}
+			else if (field.is_analog() && std::count(io.kept_fields.begin(), io.kept_fields.end(), std::make_pair(std::string(port.second->tag()), u32(field.mask()))))
+			{
+				value = u32((port.second->read() & field.mask()) >> std::countr_zero(field.mask()));
+			}
+			else
+			{
 				continue;
-			ioport_field::user_settings settings;
-			field.get_user_settings(settings);
+			}
 			std::string const tag = util::string_format("%s%s:%x", NVRAM_FIELD_PREFIX, port.first, field.mask());
 			put_u32(result, u32(tag.size()));
 			result.insert(result.end(), tag.begin(), tag.end());
 			put_u32(result, 4);
-			put_u32(result, u32(settings.value));
+			put_u32(result, value);
 			count++;
 		}
 	}
@@ -196,12 +208,19 @@ void apply_nvram(running_machine &machine, std::vector<u8> const &blob)
 			ioport_field *const field = port ? port->field(ioport_value(std::strtoul(tag.c_str() + colon + 1, nullptr, 16))) : nullptr;
 			u8 const *value_ptr = ptr;
 			u32 value;
-			if (field && (field->type() == IPT_ADJUSTER) && (data_size == 4) && get_u32(value_ptr, end, value))
+			if (field && (data_size == 4) && get_u32(value_ptr, end, value))
 			{
-				ioport_field::user_settings settings;
-				field->get_user_settings(settings);
-				settings.value = ioport_value(value);
-				field->set_user_settings(settings);
+				if (field->type() == IPT_ADJUSTER)
+				{
+					ioport_field::user_settings settings;
+					field->get_user_settings(settings);
+					settings.value = ioport_value(value);
+					field->set_user_settings(settings);
+				}
+				else if (field->is_analog())
+				{
+					field->set_value(ioport_value(value));
+				}
 			}
 			ptr += data_size;
 			continue;
@@ -534,7 +553,7 @@ void mp_instance::emulation_thread(std::promise<std::string> started)
 
 void mp_instance::serve_nvram(running_machine &machine)
 {
-	std::vector<u8> snapshot = collect_nvram(machine);
+	std::vector<u8> snapshot = collect_nvram(machine, io);
 	std::lock_guard<std::mutex> lock(nvram_mutex);
 	nvram_snapshot = std::move(snapshot);
 	nvram_done = true;
@@ -865,6 +884,28 @@ int mp_field_info(const mp_instance *instance, uint32_t index, mp_field *field)
 	field->min = info.min;
 	field->max = info.max;
 	field->default_value = info.default_value;
+	field->flags = info.flags;
+	return 1;
+}
+
+uint32_t mp_layout_control_count(mp_instance *instance)
+{
+	std::lock_guard<std::mutex> lock(instance->io.field_mutex);
+	return uint32_t(instance->io.controls.size());
+}
+
+int mp_layout_control_info(mp_instance *instance, uint32_t index, mp_layout_control *control)
+{
+	std::lock_guard<std::mutex> lock(instance->io.field_mutex);
+	if ((index >= instance->io.controls.size()) || !control)
+		return 0;
+	plugin_io::control_info const &info = instance->io.controls[index];
+	control->kind = info.kind;
+	control->area = info.area.c_str();
+	control->knob = info.knob.c_str();
+	control->port = info.port.c_str();
+	control->field = info.field;
+	control->scale = info.scale;
 	return 1;
 }
 

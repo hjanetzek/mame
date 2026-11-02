@@ -54,6 +54,137 @@ void plugin_layout_controls::clear_scripts()
 	t_scripts.clear();
 }
 
+namespace {
+
+// an argument of a script's call: a string, possibly built with a loop
+// variable ("slider_area_" .. i), or a number; anything else can't be read
+struct script_argument
+{
+	std::vector<std::string> parts;   // the strings, with an empty one where the variable goes
+	bool variable = false;
+	bool readable = true;
+	float number = 0.0f;
+	bool is_number = false;
+
+	std::string value(int index) const
+	{
+		std::string result;
+		for (std::string const &part : parts)
+			result += part.empty() ? std::to_string(index) : part;
+		return result;
+	}
+};
+
+std::vector<script_argument> read_arguments(std::string const &text)
+{
+	// split at the top level commas, outside strings
+	std::vector<std::string> raw(1);
+	bool quoted = false;
+	for (char c : text)
+	{
+		if (c == '"')
+			quoted = !quoted;
+		if ((c == ',') && !quoted)
+			raw.emplace_back();
+		else
+			raw.back() += c;
+	}
+
+	std::vector<script_argument> result;
+	std::regex const token(R"re(\s*(?:"([^"]*)"|([A-Za-z_][A-Za-z0-9_]*)|([0-9.]+))\s*(\.\.)?)re");
+	for (std::string const &argument : raw)
+	{
+		script_argument arg;
+		std::string::const_iterator from = argument.begin();
+		std::smatch match;
+		while ((from != argument.end()) && std::regex_search(from, argument.end(), match, token, std::regex_constants::match_continuous))
+		{
+			if (match[1].matched)
+				arg.parts.push_back(match[1].str());
+			else if (match[2].matched)
+			{
+				arg.parts.emplace_back();
+				arg.variable = true;
+			}
+			else
+			{
+				arg.number = std::stof(match[3].str());
+				arg.is_number = true;
+			}
+			from = match[0].second;
+		}
+		arg.readable = (from == argument.end()) || std::all_of(from, argument.end(), [] (char c) { return std::isspace(u8(c)); });
+		result.push_back(std::move(arg));
+	}
+	return result;
+}
+
+} // anonymous namespace
+
+void plugin_layout_controls::find_script_controls(render_target &target, layout_view &view)
+{
+	// the calls of the "slider and knob" and "keys and sliders" libraries
+	// that set up controls; their arguments name the items and the port:
+	//   add_slider / add_sprung_slider / add_vertical_slider (view, area, knob, port)
+	//   add_knob (view, area, port, scale, direction, dot)
+	//   add_simplecounter_knob (view, area, port, scale)
+	//   SliderHandler:create (view, area, knob, port, invert, autocenter)
+	std::regex const call(R"re((add_sprung_slider|add_vertical_slider|add_slider|add_simplecounter_knob|add_knob|SliderHandler:create)\(\s*view\s*,([^()]*)\))re");
+
+	std::map<std::string, layout_view_item *> items;
+	for (layout_view_item &item : view.items())
+		if (!item.id().empty())
+			items.emplace(item.id(), &item);
+
+	auto port_field = [&target] (std::string const &tag) -> ioport_field *
+	{
+		ioport_port *const port = target.manager().machine().root_device().ioport(tag);
+		if (!port)
+			return nullptr;
+		for (ioport_field &field : port->fields())
+			if (field.is_analog() || (field.type() == IPT_ADJUSTER))
+				return &field;
+		return nullptr;
+	};
+
+	for (std::string const &script : t_scripts)
+	{
+		for (auto it = std::sregex_iterator(script.begin(), script.end(), call); it != std::sregex_iterator(); ++it)
+		{
+			std::string const function = (*it)[1];
+			std::vector<script_argument> const args = read_arguments((*it)[2]);
+			bool const knob = (function == "add_knob") || (function == "add_simplecounter_knob");
+			std::size_t const area_arg = 0, port_arg = knob ? 1 : 2;
+			std::size_t const knob_arg = knob ? ((function == "add_knob") ? 4 : ~std::size_t(0)) : 1;
+			std::size_t const scale_arg = knob ? 2 : ~std::size_t(0);
+			if ((args.size() <= std::max(area_arg, port_arg)) || !args[area_arg].readable || !args[port_arg].readable || args[area_arg].parts.empty() || args[port_arg].parts.empty())
+				continue;
+			bool const variable = args[area_arg].variable || args[port_arg].variable || ((knob_arg < args.size()) && args[knob_arg].variable);
+
+			// a loop's variable: the indices whose items and port exist
+			for (int index = variable ? 0 : -1; index < (variable ? 100 : 0); index++)
+			{
+				std::string const area = args[area_arg].value(index);
+				std::string const port = args[port_arg].value(index);
+				std::string const moving = ((knob_arg < args.size()) && args[knob_arg].readable && !args[knob_arg].parts.empty()) ? args[knob_arg].value(index) : std::string();
+				ioport_field *const field = port_field(port);
+				if (!items.count(area) || !field || (!moving.empty() && !items.count(moving)))
+					continue;
+				float const scale = ((scale_arg < args.size()) && args[scale_arg].is_number) ? args[scale_arg].number : 0.0f;
+				found_control const control{ u32(knob ? MP_CONTROL_KNOB : MP_CONTROL_SLIDER), area, moving, port, field, scale };
+
+				// the script names the items better than the layout's bindings,
+				// e.g. a slider's travel besides its knob
+				auto const known = std::find_if(m_found.begin(), m_found.end(), [field] (found_control const &c) { return c.field == field; });
+				if (known != m_found.end())
+					*known = control;
+				else
+					m_found.push_back(control);
+			}
+		}
+	}
+}
+
 void plugin_layout_controls::find_keys(render_target &target, layout_view &view)
 {
 	// KeyboardHandler:create(view, "<background>", "<key prefix>", "<port prefix>", ...)
@@ -65,6 +196,7 @@ void plugin_layout_controls::find_keys(render_target &target, layout_view &view)
 		{
 			std::string const prefix = (*it)[1];
 			std::string const port_prefix = (*it)[2];
+			std::size_t const keys_before = m_keys.size();
 			for (layout_view_item &item : view.items())
 			{
 				if ((item.id().size() <= prefix.size()) || item.id().compare(0, prefix.size(), prefix))
@@ -79,6 +211,8 @@ void plugin_layout_controls::find_keys(render_target &target, layout_view &view)
 				if (field && field->is_analog())
 					m_keys.push_back(key{ &item, field });
 			}
+			if (m_keys.size() > keys_before)
+				m_found.push_back(found_control{ MP_CONTROL_KEYBOARD, prefix, std::string(), port_prefix, nullptr, 0.0f });
 		}
 	}
 }
@@ -121,6 +255,15 @@ void plugin_layout_controls::attach(render_target &target)
 			m_controls.push_back(control{ &item, field, false, 0, item.bounds() });
 		}
 	}
+	// the controls for the host: those the layout binds to inputs, then those
+	// its script sets up, then the keyboards
+	m_found.clear();
+	for (control const &c : m_controls)
+	{
+		std::string const tag = c.field->port().tag();
+		m_found.push_back(found_control{ u32(c.slider ? MP_CONTROL_SLIDER : MP_CONTROL_KNOB), c.item->id(), c.slider ? c.item->id() : std::string(), tag, c.field, 0.0f });
+	}
+	find_script_controls(target, view);
 	find_keys(target, view);
 	if (m_controls.empty() && m_keys.empty())
 		return;
@@ -136,6 +279,7 @@ void plugin_layout_controls::detach()
 	forget_pointers();
 	m_controls.clear();
 	m_keys.clear();
+	m_found.clear();
 }
 
 void plugin_layout_controls::release(grab const &grabbed)

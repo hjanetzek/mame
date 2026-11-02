@@ -41,7 +41,7 @@ extern "C" {
 #define MP_API __attribute__((visibility("default")))
 #endif
 
-#define MP_API_VERSION 9
+#define MP_API_VERSION 10
 
 typedef struct mp_instance mp_instance;
 
@@ -152,10 +152,14 @@ MP_API void mp_panel_pointer(mp_instance *instance, uint32_t id, int32_t x, int3
 MP_API void mp_panel_pointer_leave(mp_instance *instance, uint32_t id);
 
 /* Fields: the machine's adjusters (knobs and sliders of the hardware that
-   MAME emulates, e.g. a drum machine's mixer), for hosts that make them
-   parameters.  The list is fixed once mp_create returns; the values travel
+   MAME emulates, e.g. a drum machine's mixer) and analog inputs (sliders,
+   wheels, keys), for hosts that make them parameters.  The list is fixed once mp_create returns; the values travel
    in the NVRAM data (mp_nvram) and override those MAME keeps in its cfg
    files. */
+/* mp_field::flags */
+#define MP_FIELD_ANALOG    1     /* an analog input (e.g. a slider or wheel), else an adjuster */
+#define MP_FIELD_CENTERING 2     /* returns to its default when let go (a pitch wheel) */
+
 typedef struct mp_field
 {
 	const char *name;            /* as MAME names it, e.g. "MASTER VOLUME"; valid while the instance exists */
@@ -163,6 +167,7 @@ typedef struct mp_field
 	uint32_t mask;
 	int32_t min, max;
 	int32_t default_value;
+	uint32_t flags;              /* MP_FIELD_* */
 } mp_field;
 
 MP_API uint32_t mp_field_count(const mp_instance *instance);
@@ -216,6 +221,7 @@ typedef struct mp_layout_element
 
 typedef struct mp_layout_item
 {
+	const char *id;              /* the layout's id of the item, "" if it has none; valid until the next mp_layout_describe */
 	uint32_t element;            /* index of its element, MP_LAYOUT_NO_ELEMENT for a screen */
 	uint32_t screen;             /* index of its screen, if it shows one */
 	uint32_t blend;              /* MP_LAYOUT_BLEND_* */
@@ -256,6 +262,29 @@ MP_API uint64_t mp_layout_screen(mp_instance *instance, uint32_t screen, uint64_
    the layout's knobs and sliders follow drags.  mp_panel_pointer_leave
    ends it. */
 MP_API void mp_layout_pointer(mp_instance *instance, uint32_t id, float x, float y, uint32_t buttons);
+
+/* Controls: the knobs, sliders and keyboards of the current view, which
+   the layout binds to inputs or its script sets up (calls of the common
+   script libraries, read from the script's text, which isn't run).  The
+   list is made once the machine runs. */
+#define MP_CONTROL_KNOB     0    /* dragged vertically */
+#define MP_CONTROL_SLIDER   1    /* dragged along its travel */
+#define MP_CONTROL_KEYBOARD 2    /* keys <area><n> pressing the analog fields of the ports <port><n> with the velocity */
+#define MP_CONTROL_NO_FIELD 0xffffffffu
+
+typedef struct mp_layout_control
+{
+	uint32_t kind;               /* MP_CONTROL_* */
+	const char *area;            /* id of the item that takes the drag (the knob, the slider's travel), the keys' prefix */
+	const char *knob;            /* id of the item that moves (a slider's knob) or turns (a knob's dot), "" for none */
+	const char *port;            /* the port's tag, the keys' ports' prefix */
+	uint32_t field;              /* index of its field (mp_field_info), MP_CONTROL_NO_FIELD for a keyboard */
+	float scale;                 /* a knob's drag scale from the script, 0 for the default */
+} mp_layout_control;
+
+/* the strings are valid until the list changes (another view or layout) */
+MP_API uint32_t mp_layout_control_count(mp_instance *instance);
+MP_API int mp_layout_control_info(mp_instance *instance, uint32_t index, mp_layout_control *control);
 
 /* presses or releases the input of a clickable item of the description
    with the given serial (ignored for another one); each state is held for

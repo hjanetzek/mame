@@ -401,7 +401,7 @@ void plugin_osd_interface::capture_layout()
 			// screens default to the blend mode of their own quads, which
 			// replace what's below
 			int const blend = (item.blend_mode() < 0) ? BLENDMODE_NONE : item.blend_mode();
-			mp_layout_item desc{ MP_LAYOUT_NO_ELEMENT, 0, u32(blend), u32(item.orientation()), 0 };
+			mp_layout_item desc{ nullptr, MP_LAYOUT_NO_ELEMENT, 0, u32(blend), u32(item.orientation()), 0 };
 			if (item.screen())
 			{
 				desc.screen = u32(m_layout_screen_ptrs.size());
@@ -438,6 +438,13 @@ void plugin_osd_interface::capture_layout()
 		panel.layout_elements = std::move(element_descs);
 		panel.layout_element_ptrs = std::move(elements);
 		panel.layout_items = std::move(items);
+
+		// the items' ids, which the descriptions point to
+		panel.layout_item_ids.clear();
+		for (layout_view_item *item : m_layout_item_ptrs)
+			panel.layout_item_ids.push_back(item->id());
+		for (std::size_t i = 0; i < panel.layout_items.size(); i++)
+			panel.layout_items[i].id = panel.layout_item_ids[i].c_str();
 		panel.layout_states.clear();
 		panel.layout_screens.assign(m_layout_screen_ptrs.size(), plugin_panel::layout_screen());
 	}
@@ -671,12 +678,14 @@ void plugin_osd_interface::collect_fields()
 	{
 		for (ioport_field &field : port.second->fields())
 		{
-			if (field.type() != IPT_ADJUSTER)
+			bool const analog = field.is_analog();
+			if ((field.type() != IPT_ADJUSTER) && !analog)
 				continue;
 			m_fields.push_back(&field);
 			m_io.fields.push_back(plugin_io::field_info{
 					field.name(), port.second->tag(), field.mask(),
-					s32(field.minval()), s32(field.maxval()), s32(field.defvalue()) });
+					s32(field.minval()), s32(field.maxval()), s32(field.defvalue()),
+					u32((analog ? MP_FIELD_ANALOG : 0) | ((analog && field.centerdelta()) ? MP_FIELD_CENTERING : 0)) });
 		}
 	}
 	m_field_values.clear();
@@ -696,9 +705,15 @@ void plugin_osd_interface::update_fields()
 		if (change.first >= m_fields.size())
 			continue;
 		ioport_field &field = *m_fields[change.first];
+		s32 const value = std::clamp<s32>(change.second, s32(field.minval()), s32(field.maxval()));
+		if (field.is_analog())
+		{
+			field.set_value(ioport_value(value));
+			continue;
+		}
 		ioport_field::user_settings settings;
 		field.get_user_settings(settings);
-		settings.value = ioport_value(std::clamp<s32>(change.second, s32(field.minval()), s32(field.maxval())));
+		settings.value = ioport_value(value);
 		field.set_user_settings(settings);
 	}
 
@@ -706,6 +721,11 @@ void plugin_osd_interface::update_fields()
 	values.reserve(m_fields.size());
 	for (ioport_field *field : m_fields)
 	{
+		if (field->is_analog())
+		{
+			values.push_back(s32((field->port().read() & field->mask()) >> std::countr_zero(field->mask())));
+			continue;
+		}
 		ioport_field::user_settings settings;
 		field->get_user_settings(settings);
 		values.push_back(s32(settings.value));
@@ -716,6 +736,24 @@ void plugin_osd_interface::update_fields()
 	std::lock_guard<std::mutex> lock(m_io.field_mutex);
 	m_io.field_values = std::move(values);
 	m_io.field_serial++;
+}
+
+void plugin_osd_interface::publish_controls()
+{
+	// the controls with the indices of their fields; the analog fields they
+	// set are kept with the NVRAM data
+	std::vector<plugin_io::control_info> controls;
+	m_io.kept_fields.clear();
+	for (plugin_layout_controls::found_control const &found : m_layout_controls.found())
+	{
+		auto const index = std::find(m_fields.begin(), m_fields.end(), found.field);
+		u32 const field = ((found.field != nullptr) && (index != m_fields.end())) ? u32(index - m_fields.begin()) : MP_CONTROL_NO_FIELD;
+		controls.push_back(plugin_io::control_info{ found.kind, found.area, found.knob, found.port, field, found.scale });
+		if (found.field && found.field->is_analog() && !found.field->centerdelta())
+			m_io.kept_fields.emplace_back(found.field->port().tag(), found.field->mask());
+	}
+	std::lock_guard<std::mutex> lock(m_io.field_mutex);
+	m_io.controls = std::move(controls);
 }
 
 void plugin_osd_interface::update(bool skip_redraw)
@@ -769,6 +807,7 @@ void plugin_osd_interface::update_panel()
 	{
 		m_layout_controls.attach(*m_target);
 		m_layout_controls_attached = true;
+		publish_controls();
 	}
 
 	// the layout for a host that draws the panel itself, at the rate

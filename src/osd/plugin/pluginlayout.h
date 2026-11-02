@@ -16,9 +16,11 @@
 
 #pragma once
 
+#include "mame_plugin.h"
 #include "rendlay.h"
 
 #include <map>
+#include <string>
 #include <vector>
 
 
@@ -36,6 +38,19 @@ public:
 	// controls (emulator_info::layout_script_cb); clear before loading
 	static void add_script(char const *script);
 	static void clear_scripts();
+
+	// the controls found when attaching: bound to inputs by the layout, or
+	// set up by its script (mp_layout_control)
+	struct found_control
+	{
+		u32 kind;               // MP_CONTROL_*
+		std::string area;       // item ids, or the keys' prefix
+		std::string knob;
+		std::string port;       // the port's tag, or the keys' ports' prefix
+		ioport_field *field;    // nullptr for a keyboard
+		float scale;
+	};
+	std::vector<found_control> const &found() const { return m_found; }
 
 private:
 	struct control
@@ -73,10 +88,12 @@ private:
 	static s32 slider_value(control const &control, float x, float y);
 
 	void find_keys(render_target &target, layout_view &view);
+	void find_script_controls(render_target &target, layout_view &view);
 	static void release(grab const &grabbed);
 
 	std::vector<control> m_controls;
 	std::vector<key> m_keys;
+	std::vector<found_control> m_found;
 	std::map<u16, grab> m_grabs;
 };
 

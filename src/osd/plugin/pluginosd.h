@@ -112,6 +112,7 @@ struct plugin_panel
 	std::vector<mp_layout_element> layout_elements;
 	std::vector<layout_element *> layout_element_ptrs;   // of the target, cleared before it goes away
 	std::vector<mp_layout_item> layout_items;
+	std::vector<std::string> layout_item_ids;   // the items' ids point here
 	std::vector<mp_layout_item_state> layout_states;
 	std::uint64_t layout_states_serial = 0;
 	std::vector<layout_screen> layout_screens;
@@ -188,12 +189,28 @@ struct plugin_io
 		std::string port;
 		std::uint32_t mask;
 		std::int32_t min, max, default_value;
+		std::uint32_t flags;   // MP_FIELD_*
 	};
 	std::vector<field_info> fields;
 	std::mutex field_mutex;
 	std::vector<std::pair<std::uint32_t, std::int32_t>> field_changes;   // host to emulation thread
 	std::vector<std::int32_t> field_values;                              // emulation thread to host
 	std::uint64_t field_serial = 0;
+
+	// the analog fields kept with the NVRAM data besides the adjusters: those
+	// of the layout's controls, not keys (emulation thread)
+	std::vector<std::pair<std::string, std::uint32_t>> kept_fields;   // port tag, mask
+
+	// the layout's controls (mp_layout_control), made by the emulation
+	// thread once it attached to the layout, under field_mutex
+	struct control_info
+	{
+		std::uint32_t kind;
+		std::string area, knob, port;
+		std::uint32_t field;
+		float scale;
+	};
+	std::vector<control_info> controls;
 };
 
 
@@ -271,6 +288,7 @@ private:
 
 	// the machine's adjusters (plugin_io::fields), emulation thread
 	void update_fields();
+	void publish_controls();
 	std::vector<ioport_field *> m_fields;
 	std::vector<std::int32_t> m_field_values;
 

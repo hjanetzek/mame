@@ -32,8 +32,10 @@
  * MAME's NVRAM files, e.g. to make a data folder's starting NVRAM.
  * MPCTEST_OPTIONS=name=value;... passes extra MAME options, and
  * MPCTEST_RELOAD_LAYOUT=1 reloads changed layout files.
- * MPCTEST_FIELDS=file writes the machine's adjusters as the parameter
- * descriptions of a gearmulator plugin product.  With
+ * MPCTEST_FIELDS=file writes the machine's adjusters and the analog
+ * fields of its layout's controls as the parameter descriptions of a
+ * gearmulator plugin product, MPCTEST_CONTROLS=file the controls
+ * (controls.json); both at the end of the run.  With
  * MPCTEST_LAYOUT=1 (and MPCTEST_PANEL) a frame composed from the layout
  * description (mp_layout_*) is written next to each panel frame as
  * <prefix>.layout.<i>.<second>.ppm, with the number of pixels that differ.
@@ -79,6 +81,8 @@ typedef uint64_t (*mp_panel_frame_fn)(mp_instance *, void *, uint32_t, uint32_t,
 typedef void (*mp_panel_pointer_fn)(mp_instance *, uint32_t, int32_t, int32_t, uint32_t);
 typedef uint32_t (*mp_field_count_fn)(const mp_instance *);
 typedef int (*mp_field_info_fn)(const mp_instance *, uint32_t, mp_field *);
+typedef uint32_t (*mp_layout_control_count_fn)(mp_instance *);
+typedef int (*mp_layout_control_info_fn)(mp_instance *, uint32_t, mp_layout_control *);
 typedef uint64_t (*mp_layout_describe_fn)(mp_instance *, mp_layout_info *, mp_layout_element *, uint32_t, mp_layout_item *, uint32_t);
 typedef uint64_t (*mp_layout_states_fn)(mp_instance *, uint64_t, mp_layout_item_state *, uint32_t, uint64_t *);
 typedef int (*mp_layout_element_image_fn)(mp_instance *, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, void *);
@@ -101,6 +105,8 @@ static mp_panel_frame_fn p_mp_panel_frame;
 static mp_panel_pointer_fn p_mp_panel_pointer;
 static mp_field_count_fn p_mp_field_count;
 static mp_field_info_fn p_mp_field_info;
+static mp_layout_control_count_fn p_mp_layout_control_count;
+static mp_layout_control_info_fn p_mp_layout_control_info;
 static mp_layout_describe_fn p_mp_layout_describe;
 static mp_layout_states_fn p_mp_layout_states;
 static mp_layout_element_image_fn p_mp_layout_element_image;
@@ -124,6 +130,8 @@ static mp_layout_screen_fn p_mp_layout_screen;
 #define mp_panel_pointer p_mp_panel_pointer
 #define mp_field_count p_mp_field_count
 #define mp_field_info p_mp_field_info
+#define mp_layout_control_count p_mp_layout_control_count
+#define mp_layout_control_info p_mp_layout_control_info
 #define mp_layout_describe p_mp_layout_describe
 #define mp_layout_states p_mp_layout_states
 #define mp_layout_element_image p_mp_layout_element_image
@@ -548,18 +556,68 @@ static int write_fields(mp_instance *inst, const char *path)
 		return 0;
 	}
 	uint32_t const count = mp_field_count(inst);
+
+	/* the adjusters, and the analog fields of the layout's controls */
+	char used[4096] = { 0 };
+	uint32_t const controls = mp_layout_control_count(inst);
+	for (uint32_t c = 0; c < controls; c++)
+	{
+		mp_layout_control control;
+		if (mp_layout_control_info(inst, c, &control) && control.field < sizeof(used))
+			used[control.field] = 1;
+	}
 	fprintf(f, "{\n\t\"parameterdescriptiondefaults\":\n\t{\n\t\t\"page\": 0, \"class\": \"\", \"toText\": {\"format\": \"%%.0f\"}, \"isPublic\": true, \"isDiscrete\": false, \"isBool\": false, \"isBipolar\": false, \"step\": 0\n\t},\n");
 	fprintf(f, "\t\"parameterdescriptions\":\n\t[\n");
+	uint32_t written = 0;
 	for (uint32_t i = 0; i < count; i++)
 	{
 		mp_field field;
 		mp_field_info(inst, i, &field);
-		fprintf(f, "\t\t{\"index\": %u, \"name\": \"%s\", \"min\": %d, \"max\": %d, \"default\": %d}%s\n",
-				i, field.name, field.min, field.max, field.default_value, (i + 1 < count) ? "," : "");
+		if ((field.flags & MP_FIELD_ANALOG) && !(i < sizeof(used) && used[i]))
+			continue;
+		if (!strncmp(field.name, "Unused", 6))   /* adjusters a driver declares but doesn't use */
+			continue;
+		fprintf(f, "%s\t\t{\"index\": %u, \"name\": \"%s\", \"min\": %d, \"max\": %d, \"default\": %d}",
+				written ? ",\n" : "", written, field.name, field.min, field.max, field.default_value);
+		written++;
 	}
+	fprintf(f, "\n");
 	fprintf(f, "\t],\n\t\"valuelists\":\n\t{\n\t}\n}\n");
 	fclose(f);
-	fprintf(stderr, "wrote %u fields to %s\n", count, path);
+	fprintf(stderr, "wrote %u parameters to %s\n", written, path);
+	return 1;
+}
+
+/* the layout's controls for the gearmulator plugin (controls.json of a
+   product): items, kind, port and the parameter, named after the field */
+static int write_controls(mp_instance *inst, const char *path)
+{
+	FILE *f = fopen(path, "w");
+	if (!f)
+	{
+		perror(path);
+		return 0;
+	}
+	static const char *const kinds[] = { "knob", "slider", "keyboard" };
+	uint32_t const count = mp_layout_control_count(inst);
+	fprintf(f, "{\n\t\"controls\":\n\t[\n");
+	for (uint32_t i = 0; i < count; i++)
+	{
+		mp_layout_control control;
+		mp_layout_control_info(inst, i, &control);
+		mp_field field = { 0 };
+		int const has_field = (control.field != MP_CONTROL_NO_FIELD) && mp_field_info(inst, control.field, &field);
+		fprintf(f, "\t\t{\"kind\": \"%s\", \"area\": \"%s\", \"knob\": \"%s\", \"port\": \"%s\"",
+				control.kind < 3 ? kinds[control.kind] : "?", control.area, control.knob, control.port);
+		if (has_field)
+			fprintf(f, ", \"parameter\": \"%s\"%s", field.name, (field.flags & MP_FIELD_CENTERING) ? ", \"sprung\": true" : "");
+		if (control.scale > 0.0f)
+			fprintf(f, ", \"scale\": %g", control.scale);
+		fprintf(f, "}%s\n", (i + 1 < count) ? "," : "");
+	}
+	fprintf(f, "\t]\n}\n");
+	fclose(f);
+	fprintf(stderr, "wrote %u controls to %s\n", count, path);
 	return 1;
 }
 
@@ -688,6 +746,8 @@ int main(int argc, char **argv)
 	LOAD(mp_layout_screen)
 	LOAD(mp_field_count)
 	LOAD(mp_field_info)
+	LOAD(mp_layout_control_count)
+	LOAD(mp_layout_control_info)
 
 	printf("MAME %s, MIDI machines:", mp_build_version());
 	for (uint32_t i = 0; i < mp_machine_count(); i++)
@@ -751,8 +811,6 @@ int main(int argc, char **argv)
 			return 1;
 		}
 		printf("instance %d: latency %u frames\n", i, mp_latency(j->inst));
-		if (i == 0 && getenv("MPCTEST_FIELDS") && !write_fields(j->inst, getenv("MPCTEST_FIELDS")))
-			return 1;
 		mp_set_offline(j->inst, !realtime);
 	}
 
@@ -788,6 +846,12 @@ int main(int argc, char **argv)
 		result |= jobs[i].result;
 		printf("instance %d: underruns %llu frames\n", i, (unsigned long long)mp_underruns(jobs[i].inst));
 	}
+
+	/* the controls are known once the machine ran */
+	if (getenv("MPCTEST_FIELDS") && !write_fields(jobs[0].inst, getenv("MPCTEST_FIELDS")))
+		result = 1;
+	if (getenv("MPCTEST_CONTROLS") && !write_controls(jobs[0].inst, getenv("MPCTEST_CONTROLS")))
+		result = 1;
 
 	const char *nvramdir = getenv("MPCTEST_NVRAM_OUT");
 	if (nvramdir && !write_nvram(jobs[0].inst, nvramdir))
