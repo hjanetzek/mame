@@ -209,6 +209,8 @@ struct plugin_io
 		std::string area, knob, port;
 		std::uint32_t field;
 		float scale;
+		std::uint32_t flags;
+		float x0, y0, x1, y1;
 	};
 	std::vector<control_info> controls;
 };

@@ -65,6 +65,7 @@ struct script_argument
 	bool readable = true;
 	float number = 0.0f;
 	bool is_number = false;
+	int boolean = -1;   // true or false, -1 for neither
 
 	std::string value(int index) const
 	{
@@ -101,6 +102,10 @@ std::vector<script_argument> read_arguments(std::string const &text)
 		{
 			if (match[1].matched)
 				arg.parts.push_back(match[1].str());
+			else if (match[2].matched && ((match[2].str() == "true") || (match[2].str() == "false")))
+			{
+				arg.boolean = (match[2].str() == "true") ? 1 : 0;
+			}
 			else if (match[2].matched)
 			{
 				arg.parts.emplace_back();
@@ -171,7 +176,9 @@ void plugin_layout_controls::find_script_controls(render_target &target, layout_
 				if (!items.count(area) || !field || (!moving.empty() && !items.count(moving)))
 					continue;
 				float const scale = ((scale_arg < args.size()) && args[scale_arg].is_number) ? args[scale_arg].number : 0.0f;
-				found_control const control{ u32(knob ? MP_CONTROL_KNOB : MP_CONTROL_SLIDER), area, moving, port, field, scale };
+				// SliderHandler:create(view, area, knob, port, invert, autocenter)
+				bool const inverted = (function == "SliderHandler:create") && (args.size() > 3) && (args[3].boolean == 1);
+				found_control const control{ u32(knob ? MP_CONTROL_KNOB : MP_CONTROL_SLIDER), area, moving, port, field, scale, inverted, items[area]->bounds() };
 
 				// the script names the items better than the layout's bindings,
 				// e.g. a slider's travel besides its knob
@@ -260,8 +267,18 @@ void plugin_layout_controls::attach(render_target &target)
 	m_found.clear();
 	for (control const &c : m_controls)
 	{
+		// a slider is inverted if its state that is the higher value lies lower (or more to the right)
+		bool inverted = false;
+		if (c.slider)
+		{
+			auto const &steps = c.item->animation_bounds();
+			auto const &low = (steps.front().state < steps.back().state) ? steps.front() : steps.back();
+			auto const &high = (steps.front().state < steps.back().state) ? steps.back() : steps.front();
+			bool const horizontal = std::abs(high.bounds.x0 - low.bounds.x0) > std::abs(high.bounds.y0 - low.bounds.y0);
+			inverted = horizontal ? (high.bounds.x0 < low.bounds.x0) : (high.bounds.y0 > low.bounds.y0);
+		}
 		std::string const tag = c.field->port().tag();
-		m_found.push_back(found_control{ u32(c.slider ? MP_CONTROL_SLIDER : MP_CONTROL_KNOB), c.item->id(), c.slider ? c.item->id() : std::string(), tag, c.field, 0.0f });
+		m_found.push_back(found_control{ u32(c.slider ? MP_CONTROL_SLIDER : MP_CONTROL_KNOB), c.item->id(), c.slider ? c.item->id() : std::string(), tag, c.field, 0.0f, inverted, c.area });
 	}
 	find_script_controls(target, view);
 	find_keys(target, view);

@@ -748,7 +748,8 @@ void plugin_osd_interface::publish_controls()
 	{
 		auto const index = std::find(m_fields.begin(), m_fields.end(), found.field);
 		u32 const field = ((found.field != nullptr) && (index != m_fields.end())) ? u32(index - m_fields.begin()) : MP_CONTROL_NO_FIELD;
-		controls.push_back(plugin_io::control_info{ found.kind, found.area, found.knob, found.port, field, found.scale });
+		controls.push_back(plugin_io::control_info{ found.kind, found.area, found.knob, found.port, field, found.scale, u32(found.inverted ? MP_CONTROL_INVERTED : 0),
+				found.area_bounds.x0, found.area_bounds.y0, found.area_bounds.x1, found.area_bounds.y1 });
 		if (found.field && found.field->is_analog() && !found.field->centerdelta())
 			m_io.kept_fields.emplace_back(found.field->port().tag(), found.field->mask());
 	}

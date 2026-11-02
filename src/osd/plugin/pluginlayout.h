@@ -49,6 +49,8 @@ public:
 		std::string port;       // the port's tag, or the keys' ports' prefix
 		ioport_field *field;    // nullptr for a keyboard
 		float scale;
+		bool inverted = false;  // a slider with its minimum at the top or left
+		render_bounds area_bounds{ 0.0f, 0.0f, 0.0f, 0.0f };   // where it's dragged
 	};
 	std::vector<found_control> const &found() const { return m_found; }
 

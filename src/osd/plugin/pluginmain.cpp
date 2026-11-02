@@ -906,6 +906,11 @@ int mp_layout_control_info(mp_instance *instance, uint32_t index, mp_layout_cont
 	control->port = info.port.c_str();
 	control->field = info.field;
 	control->scale = info.scale;
+	control->flags = info.flags;
+	control->x0 = info.x0;
+	control->y0 = info.y0;
+	control->x1 = info.x1;
+	control->y1 = info.y1;
 	return 1;
 }
 

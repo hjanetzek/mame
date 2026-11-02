@@ -611,6 +611,8 @@ static int write_controls(mp_instance *inst, const char *path)
 				control.kind < 3 ? kinds[control.kind] : "?", control.area, control.knob, control.port);
 		if (has_field)
 			fprintf(f, ", \"parameter\": \"%s\"%s", field.name, (field.flags & MP_FIELD_CENTERING) ? ", \"sprung\": true" : "");
+		if (control.flags & MP_CONTROL_INVERTED)
+			fprintf(f, ", \"inverted\": true");
 		if (control.scale > 0.0f)
 			fprintf(f, ", \"scale\": %g", control.scale);
 		fprintf(f, "}%s\n", (i + 1 < count) ? "," : "");

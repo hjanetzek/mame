@@ -272,6 +272,9 @@ MP_API void mp_layout_pointer(mp_instance *instance, uint32_t id, float x, float
 #define MP_CONTROL_KEYBOARD 2    /* keys <area><n> pressing the analog fields of the ports <port><n> with the velocity */
 #define MP_CONTROL_NO_FIELD 0xffffffffu
 
+/* mp_layout_control::flags */
+#define MP_CONTROL_INVERTED 1    /* a slider whose top (or left) end is its minimum */
+
 typedef struct mp_layout_control
 {
 	uint32_t kind;               /* MP_CONTROL_* */
@@ -280,6 +283,8 @@ typedef struct mp_layout_control
 	const char *port;            /* the port's tag, the keys' ports' prefix */
 	uint32_t field;              /* index of its field (mp_field_info), MP_CONTROL_NO_FIELD for a keyboard */
 	float scale;                 /* a knob's drag scale from the script, 0 for the default */
+	uint32_t flags;              /* MP_CONTROL_* flags */
+	float x0, y0, x1, y1;        /* where it is dragged, 0..1 across the view: a slider's travel, a knob's item */
 } mp_layout_control;
 
 /* the strings are valid until the list changes (another view or layout) */
